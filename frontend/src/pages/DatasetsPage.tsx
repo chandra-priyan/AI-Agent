@@ -1,0 +1,65 @@
+import React from 'react';
+import { Database, Plus, FileSpreadsheet, ArrowRight } from 'lucide-react';
+import { AnalysisSession } from '../types';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { MOCK_ANALYSES } from '../utils/testData';
+
+export interface DatasetsPageProps {
+  recentAnalyses: AnalysisSession[];
+  onStartNewAnalysis: () => void;
+  onSelectDatasetForAnalysis: (dataset: any) => void;
+}
+
+export function DatasetsPage({ recentAnalyses, onStartNewAnalysis }: DatasetsPageProps) {
+  const displayList = recentAnalyses.length > 0 ? recentAnalyses : MOCK_ANALYSES;
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-6">
+      <PageHeader
+        title="Datasets Library"
+        subtitle="Manage and analyze uploaded CSV datasets"
+        action={
+          <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={onStartNewAnalysis}>
+            Upload New CSV
+          </Button>
+        }
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {displayList.map((item) => (
+          <Card key={item.id} hoverable className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#6D28D9] flex items-center justify-center font-bold">
+                <FileSpreadsheet className="w-5 h-5" />
+              </div>
+              <div className="overflow-hidden">
+                <h3 className="font-bold text-gray-900 text-sm truncate">{item.datasetName}</h3>
+                <p className="text-xs text-gray-400">Uploaded {item.createdAt}</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-3 rounded-lg flex items-center justify-between text-xs text-gray-600">
+              <span>Rows: {item.rows || 1540}</span>
+              <span>Cols: {item.columns || 12}</span>
+              <span className="font-semibold text-emerald-600">Active</span>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              icon={<ArrowRight className="w-3.5 h-3.5" />}
+              onClick={onStartNewAnalysis}
+            >
+              Analyze Dataset
+            </Button>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default DatasetsPage;

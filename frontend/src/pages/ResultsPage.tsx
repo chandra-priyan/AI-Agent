@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { MOCK_ANALYSES } from '../utils/testData';
+import { EvidenceCanvas } from '../components/canvas/EvidenceCanvas';
 
 export interface ResultsPageProps {
   session: AnalysisSession;
@@ -20,9 +21,12 @@ export function ResultsPage({ session, onAskFollowUp, onGenerateReport }: Result
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Executive Summary Hero Card */}
+      {/* Executive Summary Hero Card with Three.js Evidence Accent */}
       <div className="bg-[#111111] text-white rounded-2xl p-8 shadow-xl border border-gray-800 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pb-6 border-b border-gray-800">
+        {/* Three.js Evidence Accent Canvas */}
+        <EvidenceCanvas />
+
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pb-6 border-b border-gray-800 relative z-10 pointer-events-auto">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="violet">Analysis Complete</Badge>
@@ -36,7 +40,7 @@ export function ResultsPage({ session, onAskFollowUp, onGenerateReport }: Result
               size="md"
               icon={<MessageSquare className="w-4 h-4 text-purple-400" />}
               onClick={onAskFollowUp}
-              className="bg-gray-900 border-gray-700 text-white hover:bg-gray-800"
+              className="bg-gray-900 border-gray-700 text-white hover:bg-gray-800 cursor-pointer"
             >
               Ask AI Analyst
             </Button>
@@ -45,14 +49,14 @@ export function ResultsPage({ session, onAskFollowUp, onGenerateReport }: Result
               size="md"
               icon={<FileText className="w-4 h-4" />}
               onClick={onGenerateReport}
-              className="bg-[#6D28D9] hover:bg-[#5B21B6]"
+              className="bg-[#6D28D9] hover:bg-[#5B21B6] cursor-pointer"
             >
               Generate Report
             </Button>
           </div>
         </div>
 
-        <div className="space-y-3 bg-gray-900/60 p-5 rounded-xl border border-gray-800">
+        <div className="space-y-3 bg-gray-900/60 p-5 rounded-xl border border-gray-800 relative z-10 pointer-events-auto">
           <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-2">
             <Sparkles className="w-4 h-4" />
             <span>AI Executive Conclusion</span>
@@ -135,7 +139,7 @@ export function ResultsPage({ session, onAskFollowUp, onGenerateReport }: Result
           <h4 className="font-bold text-[#6D28D9]">Want to explore specific segments or ask follow-up questions?</h4>
           <p className="text-xs text-purple-800 mt-1">Our AI data analyst has full memory of this session's dataset statistics.</p>
         </div>
-        <Button variant="primary" icon={<ArrowUpRight className="w-4 h-4" />} onClick={onAskFollowUp}>
+        <Button variant="primary" icon={<ArrowUpRight className="w-4 h-4" />} onClick={onAskFollowUp} className="cursor-pointer">
           Open AI Chat
         </Button>
       </div>

@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { MOCK_ANALYSES } from '../utils/testData';
+import { DashboardNetworkCanvas } from '../components/canvas/DashboardNetworkCanvas';
 
 export interface DashboardPageProps {
   onStartNewAnalysis: () => void;
@@ -17,9 +18,12 @@ export function DashboardPage({ onStartNewAnalysis, onSelectAnalysis, recentAnal
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Hero Quick Banner */}
+      {/* Hero Quick Banner with Three.js Background Canvas */}
       <div className="bg-gradient-to-r from-[#111111] via-[#1E1B4B] to-[#6D28D9] rounded-2xl p-8 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="relative z-10 max-w-2xl">
+        {/* Three.js Background Layer */}
+        <DashboardNetworkCanvas />
+
+        <div className="relative z-10 max-w-2xl pointer-events-auto">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold backdrop-blur-md mb-3 border border-white/10">
             <Sparkles className="w-3.5 h-3.5 text-purple-300" />
             <span>Autonomous AI Scientist</span>
@@ -31,13 +35,13 @@ export function DashboardPage({ onStartNewAnalysis, onSelectAnalysis, recentAnal
             Upload CSV datasets to run automated hypothesis testing, statistical regression, correlation heatmaps, and executive AI conclusions.
           </p>
         </div>
-        <div className="relative z-10 shrink-0">
+        <div className="relative z-10 shrink-0 pointer-events-auto">
           <Button
             variant="primary"
             size="lg"
             icon={<Plus className="w-5 h-5" />}
             onClick={onStartNewAnalysis}
-            className="bg-white text-[#6D28D9] hover:bg-gray-100 shadow-lg font-bold"
+            className="bg-white text-[#6D28D9] hover:bg-gray-100 shadow-lg font-bold cursor-pointer"
           >
             Start New Investigation
           </Button>
@@ -107,7 +111,7 @@ export function DashboardPage({ onStartNewAnalysis, onSelectAnalysis, recentAnal
               key={session.id}
               hoverable
               onClick={() => onSelectAnalysis(session)}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 cursor-pointer"
             >
               <div className="space-y-1">
                 <div className="flex items-center gap-3">

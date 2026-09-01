@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, CheckCircle2, Loader2, Sparkles, ArrowRight } from 'lucide-react';
+import { Activity, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
 import { AnalysisSession } from '../types';
 import { getInvestigationStatus, getAnalysisResults } from '../services/analysisApi';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { HypothesisNetworkCanvas } from '../components/canvas/HypothesisNetworkCanvas';
 
 export interface InvestigationPageProps {
   session: AnalysisSession;
@@ -83,8 +84,11 @@ export function InvestigationPage({ session, onInvestigationComplete }: Investig
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <Card className="p-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-gray-100">
+      <Card className="p-8 relative overflow-hidden">
+        {/* Three.js Background Canvas Layer */}
+        <HypothesisNetworkCanvas />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-gray-100 relative z-10 pointer-events-auto">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-[#6D28D9] text-xs font-bold mb-2">
               <Activity className="w-3.5 h-3.5 animate-pulse" />
@@ -94,14 +98,14 @@ export function InvestigationPage({ session, onInvestigationComplete }: Investig
             <p className="text-sm text-gray-600 mt-1 font-medium">"{session.question}"</p>
           </div>
 
-          <div className="text-right">
+          <div className="text-right shrink-0">
             <div className="text-3xl font-extrabold text-[#6D28D9]">{progress}%</div>
             <p className="text-xs text-gray-500 font-semibold">Progress Completed</p>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden mb-8 p-0.5 border border-gray-200">
+        <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden mb-8 p-0.5 border border-gray-200 relative z-10">
           <div
             className="bg-gradient-to-r from-[#6D28D9] to-[#8B5CF6] h-full rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
@@ -109,7 +113,7 @@ export function InvestigationPage({ session, onInvestigationComplete }: Investig
         </div>
 
         {/* Execution Steps */}
-        <div className="space-y-4">
+        <div className="space-y-4 relative z-10 pointer-events-auto">
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Agent Reasoning Pipeline</h3>
 
           {AGENT_STAGES.map((stage, idx) => {
@@ -152,12 +156,13 @@ export function InvestigationPage({ session, onInvestigationComplete }: Investig
         </div>
 
         {progress >= 100 && (
-          <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+          <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end relative z-10">
             <Button
               variant="primary"
               size="lg"
               icon={<ArrowRight className="w-5 h-5" />}
               onClick={() => onInvestigationComplete({ ...session, status: 'COMPLETED', job_progress: 100 })}
+              className="cursor-pointer"
             >
               View Detailed Results
             </Button>

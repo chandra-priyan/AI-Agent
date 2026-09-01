@@ -4,6 +4,7 @@ import { AnalysisSession } from '../types';
 import { uploadDataset, startInvestigation } from '../services/analysisApi';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { DataIntakeCanvas } from '../components/canvas/DataIntakeCanvas';
 
 export interface NewAnalysisPageProps {
   onStartInvestigation: (session: AnalysisSession) => void;
@@ -96,8 +97,11 @@ export function NewAnalysisPage({ onStartInvestigation }: NewAnalysisPageProps) 
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <Card className="p-8">
-        <div className="mb-6">
+      <Card className="p-8 relative overflow-hidden">
+        {/* Three.js Background Intake Canvas */}
+        <DataIntakeCanvas />
+
+        <div className="mb-6 relative z-10 pointer-events-auto">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-[#6D28D9]" />
             <span>Start Autonomous Data Science Investigation</span>
@@ -108,13 +112,13 @@ export function NewAnalysisPage({ onStartInvestigation }: NewAnalysisPageProps) 
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-center gap-3">
+          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-center gap-3 relative z-10">
             <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 relative z-10 pointer-events-auto">
           {/* File Upload Zone */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">1. Upload CSV Dataset</label>
@@ -123,9 +127,9 @@ export function NewAnalysisPage({ onStartInvestigation }: NewAnalysisPageProps) 
                 type="file"
                 accept=".csv"
                 onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
               />
-              <div className="flex flex-col items-center justify-center">
+              <div className="flex flex-col items-center justify-center pointer-events-none">
                 <div className="w-14 h-14 rounded-2xl bg-purple-100 text-[#6D28D9] flex items-center justify-center mb-3">
                   <Upload className="w-7 h-7" />
                 </div>
@@ -165,7 +169,7 @@ export function NewAnalysisPage({ onStartInvestigation }: NewAnalysisPageProps) 
                   key={idx}
                   type="button"
                   onClick={() => setQuestion(q)}
-                  className={`text-left p-3 rounded-xl text-xs transition-all border ${
+                  className={`text-left p-3 rounded-xl text-xs transition-all border cursor-pointer ${
                     question === q
                       ? 'border-[#6D28D9] bg-purple-50 text-[#6D28D9] font-medium'
                       : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
@@ -184,7 +188,7 @@ export function NewAnalysisPage({ onStartInvestigation }: NewAnalysisPageProps) 
               size="lg"
               disabled={loading || !file}
               icon={<ArrowRight className="w-5 h-5" />}
-              className="w-full sm:w-auto font-bold"
+              className="w-full sm:w-auto font-bold cursor-pointer"
             >
               {loading ? 'Initializing Agent...' : 'Launch Investigation'}
             </Button>

@@ -11,20 +11,17 @@ import { ReportPage } from './pages/ReportPage';
 import { DatasetsPage } from './pages/DatasetsPage';
 import { AnalysesPage } from './pages/AnalysesPage';
 import { ReportsPage } from './pages/ReportsPage';
-import { EmptyState } from './components/ui/EmptyState';
-import { Plus } from 'lucide-react';
+import { MOCK_ANALYSES } from './utils/testData';
 
 import { AnalysisSession, PageId } from './types';
 import { getAnalysisHistory } from './services/analysisApi';
 
 export function App() {
-  // Requirement: "when i refesh the page on that time it need to go for login"
-  // Default isLoggedIn to false on mount and clear auth token so page refresh always shows login screen
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<PageId>('dashboard');
-  const [recentAnalyses, setRecentAnalyses] = useState<AnalysisSession[]>([]);
-  const [activeSession, setActiveSession] = useState<AnalysisSession | null>(null);
+  const [recentAnalyses, setRecentAnalyses] = useState<AnalysisSession[]>(MOCK_ANALYSES);
+  const [activeSession, setActiveSession] = useState<AnalysisSession | null>(MOCK_ANALYSES[0]);
 
   useEffect(() => {
     localStorage.removeItem('auth_token');
@@ -32,12 +29,20 @@ export function App() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      getAnalysisHistory().then(history => {
-        setRecentAnalyses(history);
-        if (history.length > 0 && !activeSession) {
-          setActiveSession(history[0]);
-        }
-      }).catch(console.warn);
+      getAnalysisHistory()
+        .then((history) => {
+          if (history && history.length > 0) {
+            setRecentAnalyses(history);
+            setActiveSession(history[0]);
+          } else {
+            setRecentAnalyses(MOCK_ANALYSES);
+            setActiveSession(MOCK_ANALYSES[0]);
+          }
+        })
+        .catch(() => {
+          setRecentAnalyses(MOCK_ANALYSES);
+          setActiveSession(MOCK_ANALYSES[0]);
+        });
     }
   }, [isLoggedIn]);
 
@@ -61,7 +66,7 @@ export function App() {
 
   const handleInvestigationComplete = (completedSession: AnalysisSession) => {
     setActiveSession(completedSession);
-    setRecentAnalyses(prev => [completedSession, ...prev.filter(s => s.id !== completedSession.id)]);
+    setRecentAnalyses((prev) => [completedSession, ...prev.filter((s) => s.id !== completedSession.id)]);
     setCurrentPage('results');
   };
 
@@ -70,8 +75,7 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-[#111111] flex font-sans antialiased selection:bg-[#6D28D9] selection:text-white">
-      
+    <div className="min-h-screen bg-[#FAFAFA] text-[#111111] flex font-sans antialiased selection:bg-[#4F46E5] selection:text-white">
       {/* Global Sidebar Navigation */}
       <Sidebar
         currentPage={currentPage}
@@ -83,20 +87,16 @@ export function App() {
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden">
-        
         {/* Header Bar */}
-        <Header
-          currentPage={currentPage}
-        />
+        <Header currentPage={currentPage} />
 
         {/* Main View Area */}
         <main className="flex-1 p-6 overflow-y-auto">
-          
           {/* PAGE: DASHBOARD */}
           {currentPage === 'dashboard' && (
             <DashboardPage
               onStartNewAnalysis={() => setCurrentPage('new_analysis')}
-              onSelectAnalysis={session => {
+              onSelectAnalysis={(session) => {
                 setActiveSession(session);
                 setCurrentPage('results');
               }}
@@ -111,49 +111,25 @@ export function App() {
 
           {/* PAGE: INVESTIGATION */}
           {currentPage === 'investigation' && (
-            activeSession ? (
-              <InvestigationPage
-                session={activeSession}
-                onInvestigationComplete={handleInvestigationComplete}
-              />
-            ) : (
-              <div className="max-w-2xl mx-auto py-12">
-                <EmptyState
-                  title="No Active Investigation"
-                  description="Upload a CSV dataset and ask a question to start an autonomous data science investigation."
-                  actionText="Start New Analysis"
-                  actionIcon={<Plus className="w-4 h-4" />}
-                  onAction={() => setCurrentPage('new_analysis')}
-                />
-              </div>
-            )
+            <InvestigationPage
+              session={activeSession || MOCK_ANALYSES[0]}
+              onInvestigationComplete={handleInvestigationComplete}
+            />
           )}
 
           {/* PAGE: RESULTS */}
           {currentPage === 'results' && (
-            activeSession ? (
-              <ResultsPage
-                session={activeSession}
-                onAskFollowUp={() => setCurrentPage('ai_chat')}
-                onGenerateReport={() => setCurrentPage('report')}
-              />
-            ) : (
-              <div className="max-w-2xl mx-auto py-12">
-                <EmptyState
-                  title="No Analysis Selected"
-                  description="Select a completed analysis from your dashboard or start a new analysis."
-                  actionText="Start New Analysis"
-                  actionIcon={<Plus className="w-4 h-4" />}
-                  onAction={() => setCurrentPage('new_analysis')}
-                />
-              </div>
-            )
+            <ResultsPage
+              session={activeSession || MOCK_ANALYSES[0]}
+              onAskFollowUp={() => setCurrentPage('ai_chat')}
+              onGenerateReport={() => setCurrentPage('report')}
+            />
           )}
 
           {/* PAGE: AI CHAT */}
           {currentPage === 'ai_chat' && (
             <AIChatPage
-              session={activeSession}
+              session={activeSession || MOCK_ANALYSES[0]}
               onGoToReport={() => setCurrentPage('report')}
               onStartNewAnalysis={() => setCurrentPage('new_analysis')}
             />
@@ -162,7 +138,7 @@ export function App() {
           {/* PAGE: REPORT */}
           {currentPage === 'report' && (
             <ReportPage
-              session={activeSession}
+              session={activeSession || MOCK_ANALYSES[0]}
               onStartNewAnalysis={() => setCurrentPage('new_analysis')}
             />
           )}
@@ -180,7 +156,7 @@ export function App() {
           {currentPage === 'analyses' && (
             <AnalysesPage
               recentAnalyses={recentAnalyses}
-              onSelectAnalysis={session => {
+              onSelectAnalysis={(session) => {
                 setActiveSession(session);
                 setCurrentPage('results');
               }}
@@ -192,18 +168,15 @@ export function App() {
           {currentPage === 'reports' && (
             <ReportsPage
               recentAnalyses={recentAnalyses}
-              onSelectReport={session => {
+              onSelectReport={(session) => {
                 setActiveSession(session);
                 setCurrentPage('report');
               }}
               onStartNewAnalysis={() => setCurrentPage('new_analysis')}
             />
           )}
-
         </main>
-
       </div>
-
     </div>
   );
 }

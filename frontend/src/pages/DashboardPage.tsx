@@ -19,7 +19,7 @@ export function DashboardPage({ onStartNewAnalysis, onSelectAnalysis, recentAnal
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Hero Quick Banner with Three.js Background Canvas */}
-      <div className="bg-gradient-to-r from-[#111111] via-[#1E1B4B] to-[#6D28D9] rounded-2xl p-8 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-[#111111] via-[#1E1B4B] to-[#6D28D9] rounded-2xl p-8 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-gray-800">
         {/* Three.js Background Layer */}
         <DashboardNetworkCanvas />
 
@@ -41,7 +41,7 @@ export function DashboardPage({ onStartNewAnalysis, onSelectAnalysis, recentAnal
             size="lg"
             icon={<Plus className="w-5 h-5" />}
             onClick={onStartNewAnalysis}
-            className="bg-white text-[#6D28D9] hover:bg-gray-100 shadow-lg font-bold cursor-pointer"
+            className="bg-[#4F46E5] hover:bg-[#4338CA] text-white shadow-lg border border-white/20 hover:border-white/40 font-bold cursor-pointer transition-all px-6 py-3 rounded-xl"
           >
             Start New Investigation
           </Button>
@@ -51,7 +51,7 @@ export function DashboardPage({ onStartNewAnalysis, onSelectAnalysis, recentAnal
       {/* Overview Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-100 text-[#6D28D9] flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-xl bg-purple-100 text-[#4F46E5] flex items-center justify-center font-bold">
             <Activity className="w-6 h-6" />
           </div>
           <div>
@@ -97,10 +97,10 @@ export function DashboardPage({ onStartNewAnalysis, onSelectAnalysis, recentAnal
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-[#6D28D9]" />
+            <Clock className="w-5 h-5 text-[#4F46E5]" />
             <span>Recent Data Investigations</span>
           </h2>
-          <Button variant="ghost" size="sm" onClick={onStartNewAnalysis}>
+          <Button variant="ghost" size="sm" onClick={onStartNewAnalysis} className="cursor-pointer">
             Create New <ArrowRight className="w-3.5 h-3.5 ml-1" />
           </Button>
         </div>
@@ -129,7 +129,7 @@ export function DashboardPage({ onStartNewAnalysis, onSelectAnalysis, recentAnal
                   <p className="text-xs text-gray-400">Created</p>
                   <p className="text-xs font-semibold text-gray-700">{session.createdAt}</p>
                 </div>
-                <Button variant="outline" size="sm" icon={<ArrowRight className="w-3.5 h-3.5" />}>
+                <Button variant="outline" size="sm" icon={<ArrowRight className="w-3.5 h-3.5" />} className="cursor-pointer">
                   View Findings
                 </Button>
               </div>

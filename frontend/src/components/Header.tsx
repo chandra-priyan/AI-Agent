@@ -1,6 +1,7 @@
 import React from 'react';
-import { Menu, Sparkles, User, Bell } from 'lucide-react';
+import { Menu, Sparkles, User, Bell, Calendar } from 'lucide-react';
 import { PageId } from '../types';
+import { getFormattedDate } from '../utils/dateUtils';
 
 export interface HeaderProps {
   currentPage: PageId;
@@ -22,6 +23,7 @@ const PAGE_TITLES: Record<PageId, { title: string; subtitle: string }> = {
 
 export function Header({ currentPage, onOpenMobileSidebar }: HeaderProps) {
   const info = PAGE_TITLES[currentPage] || { title: 'Autonomous Data Scientist', subtitle: 'AI-Powered Data Science Engine' };
+  const todayFormatted = getFormattedDate();
 
   return (
     <header className="h-16 bg-white border-b border-[#E5E7EB] px-6 flex items-center justify-between shrink-0">
@@ -41,18 +43,23 @@ export function Header({ currentPage, onOpenMobileSidebar }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F3E8FF] text-[#6D28D9] text-xs font-semibold">
-          <Sparkles className="w-3.5 h-3.5" />
+        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium border border-gray-200">
+          <Calendar className="w-3.5 h-3.5 text-gray-500" />
+          <span>{todayFormatted}</span>
+        </div>
+
+        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F3E8FF] text-[#4F46E5] text-xs font-semibold">
+          <Sparkles className="w-3.5 h-3.5 text-[#4F46E5]" />
           <span>Local Engine Ready</span>
         </div>
 
-        <button className="p-2 rounded-lg text-[#6B7280] hover:bg-[#F3F4F6] transition-colors relative">
+        <button className="p-2 rounded-lg text-[#6B7280] hover:bg-[#F3F4F6] transition-colors relative cursor-pointer">
           <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#6D28D9]"></span>
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#4F46E5]"></span>
         </button>
 
         <div className="flex items-center gap-2 pl-3 border-l border-[#E5E7EB]">
-          <div className="w-8 h-8 rounded-full bg-[#6D28D9] text-white font-bold text-xs flex items-center justify-center shadow-xs">
+          <div className="w-8 h-8 rounded-full bg-[#4F46E5] text-white font-bold text-xs flex items-center justify-center shadow-xs">
             <User className="w-4 h-4" />
           </div>
         </div>

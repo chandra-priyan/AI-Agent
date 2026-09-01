@@ -47,18 +47,15 @@ export function NewAnalysisPage({ onStartInvestigation }: NewAnalysisPageProps) 
     setError('');
 
     try {
-      // 1. Upload CSV to backend
       const uploadRes = await uploadDataset(file);
       const analysisId = uploadRes.analysis_id || uploadRes.dataset_id;
 
-      // 2. Start investigation job
       try {
         await startInvestigation(analysisId, finalQuestion);
       } catch {
         // Fallback for dev mode
       }
 
-      // 3. Create active session object
       const newSession: AnalysisSession = {
         id: analysisId,
         analysis_id: analysisId,
@@ -76,7 +73,6 @@ export function NewAnalysisPage({ onStartInvestigation }: NewAnalysisPageProps) 
 
       onStartInvestigation(newSession);
     } catch (err: any) {
-      // Fallback dev mode mock session if backend is initializing
       const mockSession: AnalysisSession = {
         id: `analysis_${Date.now()}`,
         datasetName: file.name,
@@ -97,40 +93,43 @@ export function NewAnalysisPage({ onStartInvestigation }: NewAnalysisPageProps) 
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <Card className="p-8 relative overflow-hidden">
-        {/* Three.js Background Intake Canvas */}
+      {/* Header Banner Card with Subtle Three.js Background Canvas */}
+      <div className="bg-gradient-to-r from-[#111115] via-[#1E1B4B] to-[#4F46E5] rounded-2xl p-6 text-white shadow-xl relative overflow-hidden flex items-center justify-between border border-gray-800">
         <DataIntakeCanvas />
-
-        <div className="mb-6 relative z-10 pointer-events-auto">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#6D28D9]" />
-            <span>Start Autonomous Data Science Investigation</span>
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Upload your CSV file and specify your target research query. The AI agent will run descriptive statistics, hypotheses, and diagnostic visualizations.
+        <div className="relative z-10 pointer-events-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-purple-200 text-xs font-semibold backdrop-blur-md mb-2 border border-white/10">
+            <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+            <span>Autonomous Data Intake & Analysis</span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">Launch New Data Investigation</h1>
+          <p className="text-xs text-gray-300 mt-1 max-w-xl">
+            Upload your CSV dataset and specify a target research query. The AI agent will profile the dataset, test hypotheses, and output verified statistical findings.
           </p>
         </div>
+      </div>
 
+      {/* Main Intake Form Card */}
+      <Card className="p-8">
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-center gap-3 relative z-10">
-            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
+          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-3">
+            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6 relative z-10 pointer-events-auto">
-          {/* File Upload Zone */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* File Upload Dropzone */}
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">1. Upload CSV Dataset</label>
-            <div className="border-2 border-dashed border-gray-300 hover:border-[#6D28D9] bg-gray-50/50 hover:bg-purple-50/30 rounded-2xl p-8 text-center transition-all cursor-pointer relative">
+            <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">1. Select CSV Dataset File</label>
+            <div className="border-2 border-dashed border-gray-300 hover:border-[#4F46E5] bg-gray-50/70 hover:bg-purple-50/20 rounded-2xl p-8 text-center transition-all cursor-pointer relative">
               <input
                 type="file"
                 accept=".csv"
                 onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               />
               <div className="flex flex-col items-center justify-center pointer-events-none">
-                <div className="w-14 h-14 rounded-2xl bg-purple-100 text-[#6D28D9] flex items-center justify-center mb-3">
+                <div className="w-14 h-14 rounded-2xl bg-purple-100 text-[#4F46E5] flex items-center justify-center mb-3 shadow-xs">
                   <Upload className="w-7 h-7" />
                 </div>
                 {file ? (
@@ -150,33 +149,33 @@ export function NewAnalysisPage({ onStartInvestigation }: NewAnalysisPageProps) 
 
           {/* Research Question */}
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">2. Define Research Question</label>
+            <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">2. Define Business / Statistical Query</label>
             <textarea
               rows={3}
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="e.g., What are the main drivers of quarterly sales volume variance?"
-              className="w-full p-4 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-[#6D28D9] focus:ring-1 focus:ring-[#6D28D9] bg-white shadow-xs"
+              className="w-full p-4 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] bg-white shadow-xs"
             />
           </div>
 
-          {/* Suggested Questions */}
+          {/* Suggested Queries */}
           <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Or select a suggested query:</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Or select a suggested analytical query:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {SUGGESTED_QUESTIONS.map((q, idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => setQuestion(q)}
-                  className={`text-left p-3 rounded-xl text-xs transition-all border cursor-pointer ${
+                  className={`text-left p-3 rounded-xl text-xs transition-all border cursor-pointer flex items-start gap-2 ${
                     question === q
-                      ? 'border-[#6D28D9] bg-purple-50 text-[#6D28D9] font-medium'
+                      ? 'border-[#4F46E5] bg-purple-50/80 text-[#4F46E5] font-semibold shadow-xs'
                       : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  <FileText className="w-3.5 h-3.5 inline mr-1.5 text-gray-400" />
-                  {q}
+                  <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
+                  <span>{q}</span>
                 </button>
               ))}
             </div>
@@ -187,8 +186,8 @@ export function NewAnalysisPage({ onStartInvestigation }: NewAnalysisPageProps) 
               type="submit"
               size="lg"
               disabled={loading || !file}
-              icon={<ArrowRight className="w-5 h-5" />}
-              className="w-full sm:w-auto font-bold cursor-pointer"
+              icon={<ArrowRight className="w-4 h-4" />}
+              className="w-full sm:w-auto font-bold bg-[#4F46E5] hover:bg-[#4338CA] text-white px-8 py-3 rounded-xl cursor-pointer shadow-md"
             >
               {loading ? 'Initializing Agent...' : 'Launch Investigation'}
             </Button>

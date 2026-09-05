@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: autonomous-data-scientist-backend
+    env: python
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: MONGO_DB_NAME
+        value: autonomous_data_scientist
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: OPENROUTER_MODEL
+        value: meta-llama/llama-3.3-70b-instruct
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: LLM_TIMEOUT
+        value: "45"
+      - key: JWT_SECRET_KEY
+        generateValue: true

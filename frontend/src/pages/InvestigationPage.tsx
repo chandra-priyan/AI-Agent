@@ -22,6 +22,8 @@ const AGENT_STAGES = [
 export function InvestigationPage({ session, onInvestigationComplete }: InvestigationPageProps) {
   const [progress, setProgress] = useState<number>(session.job_progress || session.progress || 15);
   const [currentStage, setCurrentStage] = useState<string>(session.job_stage || session.stage || 'UNDERSTANDING_QUESTION');
+  const [isFinished, setIsFinished] = useState<boolean>(false);
+  const [finishedSessionData, setFinishedSessionData] = useState<AnalysisSession | null>(null);
 
   useEffect(() => {
     let intervalId: any = null;
@@ -32,14 +34,16 @@ export function InvestigationPage({ session, onInvestigationComplete }: Investig
         const p = res.progress ?? res.job_progress ?? progress + 20;
         const st = res.stage || res.job_stage || currentStage;
 
-        setProgress(Math.min(p, 100));
+        const nextProgress = Math.min(p, 100);
+        setProgress(nextProgress);
         if (st) setCurrentStage(st);
 
-        if (p >= 100 || res.status === 'COMPLETED') {
+        if (nextProgress >= 100 || res.status === 'COMPLETED') {
           clearInterval(intervalId);
+          setIsFinished(true);
           try {
             const resultsData = await getAnalysisResults(session.id);
-            onInvestigationComplete({
+            setFinishedSessionData({
               ...session,
               status: 'COMPLETED',
               job_progress: 100,
@@ -47,7 +51,7 @@ export function InvestigationPage({ session, onInvestigationComplete }: Investig
               conclusion: resultsData.conclusion || 'Autonomous analysis successfully finished with high statistical confidence.',
             });
           } catch {
-            onInvestigationComplete({
+            setFinishedSessionData({
               ...session,
               status: 'COMPLETED',
               job_progress: 100,
@@ -61,14 +65,13 @@ export function InvestigationPage({ session, onInvestigationComplete }: Investig
           const next = prev + 25;
           if (next >= 100) {
             clearInterval(intervalId);
-            setTimeout(() => {
-              onInvestigationComplete({
-                ...session,
-                status: 'COMPLETED',
-                job_progress: 100,
-                conclusion: 'Analysis complete: Highly significant correlation detected between key features.',
-              });
-            }, 800);
+            setIsFinished(true);
+            setFinishedSessionData({
+              ...session,
+              status: 'COMPLETED',
+              job_progress: 100,
+              conclusion: 'Analysis complete: Highly significant correlation detected between key features.',
+            });
             return 100;
           }
           return next;
@@ -81,6 +84,15 @@ export function InvestigationPage({ session, onInvestigationComplete }: Investig
 
     return () => clearInterval(intervalId);
   }, [session.id]);
+
+  const handleProceedToResults = () => {
+    const finalData = finishedSessionData || {
+      ...session,
+      status: 'COMPLETED',
+      job_progress: 100,
+    };
+    onInvestigationComplete(finalData);
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -161,7 +173,7 @@ export function InvestigationPage({ session, onInvestigationComplete }: Investig
               variant="primary"
               size="lg"
               icon={<ArrowRight className="w-5 h-5" />}
-              onClick={() => onInvestigationComplete({ ...session, status: 'COMPLETED', job_progress: 100 })}
+              onClick={handleProceedToResults}
               className="cursor-pointer"
             >
               View Detailed Results

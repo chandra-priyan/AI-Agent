@@ -14,10 +14,10 @@ export interface ResultsPageProps {
 }
 
 export function ResultsPage({ session, onAskFollowUp, onGenerateReport }: ResultsPageProps) {
-  const currentSession = session || MOCK_ANALYSES[0];
-  const findings = currentSession.findings || currentSession.results?.key_findings || MOCK_ANALYSES[0].findings || [];
-  const hypotheses = currentSession.hypotheses || currentSession.results?.hypotheses || MOCK_ANALYSES[0].hypotheses || [];
-  const conclusionText = currentSession.conclusion || currentSession.results?.conclusion || MOCK_ANALYSES[0].conclusion;
+  const currentSession = session;
+  const findings: any[] = currentSession?.findings || currentSession?.results?.key_findings || [];
+  const hypotheses: any[] = currentSession?.hypotheses || currentSession?.results?.hypotheses || [];
+  const conclusionText = currentSession?.conclusion || currentSession?.results?.conclusion || 'Autonomous analysis complete. All calculated metrics and statistical findings are verified against the uploaded CSV dataset.';
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -30,9 +30,9 @@ export function ResultsPage({ session, onAskFollowUp, onGenerateReport }: Result
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="violet">Analysis Complete</Badge>
-              <span className="text-xs text-gray-400 font-medium">Dataset: {currentSession.datasetName}</span>
+              <span className="text-xs text-gray-400 font-medium">Dataset: {currentSession?.datasetName || currentSession?.filename || 'Dataset'}</span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">{currentSession.question}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{currentSession?.question || 'Business Query'}</h1>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <Button

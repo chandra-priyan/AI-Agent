@@ -35,15 +35,14 @@ export function ResultsPage({ session, onAskFollowUp, onGenerateReport }: Result
             <h1 className="text-2xl font-bold tracking-tight">{currentSession?.question || 'Business Query'}</h1>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <Button
-              variant="outline"
-              size="md"
-              icon={<MessageSquare className="w-4 h-4 text-purple-400" />}
+            <button
+              type="button"
               onClick={onAskFollowUp}
-              className="bg-gray-900 border-gray-700 text-white hover:bg-gray-800 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-purple-950/60 text-purple-200 border border-purple-700/60 hover:bg-purple-900 hover:text-white transition-colors cursor-pointer shadow-sm"
             >
-              Ask AI Analyst
-            </Button>
+              <MessageSquare className="w-4 h-4 text-purple-400 shrink-0" />
+              <span>Ask AI Analyst</span>
+            </button>
             <Button
               variant="primary"
               size="md"

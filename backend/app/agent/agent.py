@@ -33,17 +33,41 @@ class AgentSessionStore:
         try:
             from app.services.persistence_service import PersistenceService
             
-            # Format hypotheses
+            # Format hypotheses for frontend compatibility
             formatted_hypotheses = [
                 {
                     "id": h.id,
-                    "title": h.description,
-                    "details": h.reason,
+                    "title": getattr(h, "title", None) or h.description,
+                    "description": h.description or getattr(h, "reason", "") or "",
+                    "details": getattr(h, "reason", "") or "",
+                    "status": "validated" if (hasattr(h, "status") and (h.status in ("SUPPORTED", "PARTIALLY_SUPPORTED") or getattr(h.status, "name", "") in ("SUPPORTED", "PARTIALLY_SUPPORTED"))) else "rejected",
                     "evidenceLevel": h.status.value if hasattr(h.status, "value") else str(h.status),
-                    "isSupported": h.status in ("SUPPORTED", "PARTIALLY_SUPPORTED")
+                    "isSupported": hasattr(h, "status") and (h.status in ("SUPPORTED", "PARTIALLY_SUPPORTED") or getattr(h.status, "name", "") in ("SUPPORTED", "PARTIALLY_SUPPORTED"))
                 }
                 for h in state.hypotheses
             ]
+
+            # Generate key findings from hypotheses and investigation conclusion
+            formatted_findings = [
+                {
+                    "id": f"f_{i+1}",
+                    "category": getattr(h, "title", "Variance Analysis"),
+                    "title": h.description or "Primary Statistical Insight",
+                    "summary": getattr(h, "reason", state.conclusion or "Analysis verified statistical metric variance."),
+                    "confidence": state.confidence.level.value if hasattr(state.confidence, "level") else "HIGH"
+                }
+                for i, h in enumerate(state.hypotheses)
+            ]
+            if not formatted_findings and state.conclusion:
+                formatted_findings = [
+                    {
+                        "id": "f_1",
+                        "category": "Executive Synthesis",
+                        "title": "Autonomous Investigation Conclusion",
+                        "summary": state.conclusion,
+                        "confidence": state.confidence.level.value if hasattr(state.confidence, "level") else "HIGH"
+                    }
+                ]
 
             # In-place deduplication of state.evidence to prevent duplicates ever slipping through
             clean_evs = []
@@ -77,6 +101,7 @@ class AgentSessionStore:
                 "status": state.status,
                 "datasetProfile": state.dataset_profile,
                 "investigationPlan": [s.model_dump() for s in state.investigation_plan],
+                "findings": formatted_findings,
                 "hypotheses": formatted_hypotheses,
                 "executed_analyses": [e.model_dump() for e in state.executed_analyses],
                 "evidence": formatted_evidence,
@@ -191,21 +216,12 @@ class AutonomousDataScientistAgent:
             state.logs.append(f"Goal understood: intent='{goal.intent}', target_metric='{goal.target_metric}'")
 
             if not goal.is_answerable:
-                state.status = "completed"
-                state.conclusion = goal.unsupported_reason or "Dataset lacks relevant columns to answer this question."
-                state.confidence = AgentConfidence(
-                    level=ConfidenceLevel.INSUFFICIENT,
-                    rationale=[state.conclusion]
-                )
-                state.recommendations = [
-                    "Upload a dataset containing relevant metric columns.",
-                    "Verify CSV headers and data types."
-                ]
-                audit_logger.log_event("investigation_halted", "Dataset insufficient for target goal", status="COMPLETED")
-                state.audit_trail_data = audit_logger.to_list()
-                state.evidence_graph_data = evidence_graph.to_dict()
-                self.store.save_state(state)
-                return state
+                logger.warning(f"Goal flagged as vague/unsupported. Falling back to exploratory dataset investigation for {dataset_id}")
+                goal.is_answerable = True
+                num_cols = dataset_profile.get("numerical_columns", [])
+                cat_cols = dataset_profile.get("categorical_columns", [])
+                goal.target_metric = num_cols[0] if num_cols else (cat_cols[0] if cat_cols else "metric")
+                goal.unsupported_reason = None
 
             # 4. Create Plan
             plan = await self.planner.create_plan(user_question, goal, dataset_profile)

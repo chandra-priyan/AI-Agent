@@ -32,30 +32,25 @@ class AgentPlanner:
             target_metric = parsed.get("target_metric")
             unsupported_reason = parsed.get("unsupported_reason")
 
-            # Double-check answerability against profile columns
             num_cols = dataset_profile.get("numerical_columns", [])
             cat_cols = dataset_profile.get("categorical_columns", [])
             all_cols = num_cols + cat_cols
 
-            if target_metric and target_metric not in all_cols:
-                # Fallback to first numerical metric if available
-                if num_cols:
-                    target_metric = num_cols[0]
-                else:
-                    target_metric = None
-
-            if not is_answerable or (not num_cols and not cat_cols):
+            if not all_cols:
                 return InvestigationGoal(
                     intent=question,
                     is_answerable=False,
-                    unsupported_reason=unsupported_reason or "Dataset lacks sufficient columns or numerical metrics to answer this question."
+                    unsupported_reason="Uploaded dataset has no readable columns or valid CSV rows."
                 )
 
+            if not target_metric or target_metric not in all_cols:
+                target_metric = num_cols[0] if num_cols else cat_cols[0]
+
             return InvestigationGoal(
-                intent=parsed.get("intent", question),
+                intent=parsed.get("intent") or f"Exploratory dataset analysis for '{target_metric}'",
                 target_metric=target_metric,
                 question_type=parsed.get("question_type", "exploratory"),
-                relevant_dimensions=parsed.get("relevant_dimensions", cat_cols[:3]),
+                relevant_dimensions=parsed.get("relevant_dimensions") or cat_cols[:3],
                 date_column=parsed.get("date_column") or dataset_profile.get("date_column"),
                 is_answerable=True
             )

@@ -384,50 +384,9 @@ class AutonomousDataScientistAgent:
         user_question: Optional[str],
         user_message: str
     ) -> str:
-        """Grounds follow-up chat in actual CSV dataset profile and investigation findings."""
-        state = self.store.get_state(analysis_id)
-        
-        # Check database if not in memory
-        from app.services.persistence_service import PersistenceService
-        db_analysis = PersistenceService.get_analysis(analysis_id)
-        
-        dataset_profile = state.dataset_profile if state else (db_analysis.get("datasetProfile") if db_analysis else {})
-        column_names = dataset_profile.get("column_names") or []
-        conclusion = state.conclusion if state else (db_analysis.get("conclusion") if db_analysis else "")
-        question = user_question or (state.user_question if state else (db_analysis.get("question") if db_analysis else "Business Question"))
-        
-        # Inspect if user asks about a missing column
-        msg_lower = user_message.lower()
-        if "region" in msg_lower and not any("region" in col.lower() for col in column_names):
-            return f"The dataset does not contain a 'region' field (available columns: {', '.join(column_names[:8])}), so I cannot evaluate regional differences for this analysis."
-        
-        if "churn" in msg_lower and not any("churn" in col.lower() for col in column_names):
-            return f"The dataset does not contain a 'churn' field (available columns: {', '.join(column_names[:8])}), so I cannot evaluate customer churn."
-        
-        if "price" in msg_lower or "discount" in msg_lower:
-            if not any(k in col.lower() for col in column_names for k in ["price", "discount", "cost"]):
-                return f"The dataset does not contain pricing or discount fields (available columns: {', '.join(column_names[:8])}), so pricing impact cannot be computed."
-
-        prompt = f"""
-You are an expert Autonomous Data Scientist providing a follow-up answer to a client.
-
-INVESTIGATION CONTEXT:
-- Original Question: {question}
-- Available Columns: {', '.join(column_names)}
-- Key Finding / Conclusion: {conclusion}
-
-USER FOLLOW-UP QUESTION:
-"{user_message}"
-
-INSTRUCTIONS:
-1. Ground your answer strictly in the available dataset columns and conclusion above.
-2. If the user asks about factors or metrics NOT present in the dataset, explicitly explain that the dataset lacks that information.
-3. Be concise, precise, and professional.
-"""
-        try:
-            response = await self.llm_service.generate(prompt)
-            return response.strip()
-        except Exception as err:
-            logger.warning(f"Groq chat generation failed: {err}")
-            return f"Based on the analysis of {question}, the calculated evidence indicates: {conclusion or 'Investigation complete.'}"
+        """Grounds follow-up chat in actual CSV dataset profile and investigation findings using AIChatEngine."""
+        from app.agent.chat_engine import AIChatEngine
+        chat_engine = AIChatEngine(self.llm_service)
+        res = await chat_engine.process_chat(analysis_id, user_message)
+        return res.get("text", "Calculated evidence shows statistically significant findings.")
 

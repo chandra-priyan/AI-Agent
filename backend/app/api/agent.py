@@ -271,20 +271,23 @@ async def post_chat_message(
         user_id=user_id
     )
 
-    # Invoke agent for chat answer
+    # Invoke AIChatEngine for dataset-grounded chat answer
     try:
-        agent_instance = AutonomousDataScientistAgent()
-        reply_text = await agent_instance.answer_followup_chat(
+        from app.agent.chat_engine import AIChatEngine
+        chat_engine = AIChatEngine()
+        res_data = await chat_engine.process_chat(
             analysis_id=analysis_id,
-            user_question=analysis.get("question", ""),
-            user_message=user_text
+            user_message=user_text,
+            user_id=user_id
         )
+        reply_text = res_data.get("text", "")
+        confidence = res_data.get("confidence", "HIGH")
 
         ai_msg = PersistenceService.save_chat_message(
             analysis_id=analysis_id,
             role="assistant",
             text=reply_text,
-            confidence=analysis.get("confidence", "HIGH"),
+            confidence=confidence,
             user_id=user_id
         )
 
@@ -293,7 +296,7 @@ async def post_chat_message(
             "analysisId": analysis_id,
             "sender": "ai",
             "text": reply_text,
-            "confidence": analysis.get("confidence", "HIGH"),
+            "confidence": confidence,
             "timestamp": "Just now"
         }
     except Exception as e:

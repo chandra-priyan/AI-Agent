@@ -81,7 +81,7 @@ export function Sidebar({
               DataAgent.AI
             </h1>
             <p className="text-[11px] text-[#A1A1AA] font-normal">
-              Autonomous Analytics Engine
+              Analytics Engine
             </p>
           </div>
         </div>
@@ -135,19 +135,17 @@ export function Sidebar({
       <div className="px-3 py-2.5 border-b border-[#272B33] space-y-1">
         <button
           onClick={() => handleNavClick('settings')}
-          className={`w-full relative flex items-center gap-2.5 h-9 px-3 rounded-[7px] text-sm font-medium transition-all cursor-pointer ${
-            currentPage === 'settings'
+          className={`w-full relative flex items-center gap-2.5 h-9 px-3 rounded-[7px] text-sm font-medium transition-all cursor-pointer ${currentPage === 'settings'
               ? 'bg-[#241A3A] text-white'
               : 'text-[#A1A1AA] hover:bg-[#161A21] hover:text-[#F4F4F5]'
-          }`}
+            }`}
         >
           {currentPage === 'settings' && (
             <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r bg-[#7C3AED]" />
           )}
           <Settings
-            className={`w-[18px] h-[18px] pl-1 ${
-              currentPage === 'settings' ? 'text-white' : 'text-[#A1A1AA]'
-            }`}
+            className={`w-[18px] h-[18px] pl-1 ${currentPage === 'settings' ? 'text-white' : 'text-[#A1A1AA]'
+              }`}
             strokeWidth={1.75}
           />
           <span>Settings</span>
@@ -180,11 +178,10 @@ export function Sidebar({
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
-                  className={`w-full relative flex items-center justify-between h-10 px-3 rounded-[7px] text-sm font-medium transition-all cursor-pointer ${
-                    isActive
+                  className={`w-full relative flex items-center justify-between h-10 px-3 rounded-[7px] text-sm font-medium transition-all cursor-pointer ${isActive
                       ? 'bg-[#241A3A] text-white'
                       : 'text-[#A1A1AA] hover:bg-[#161A21] hover:text-[#F4F4F5]'
-                  }`}
+                    }`}
                 >
                   {/* Active Indicator Line */}
                   {isActive && (
@@ -193,9 +190,8 @@ export function Sidebar({
 
                   <div className="flex items-center gap-2.5 pl-1">
                     <Icon
-                      className={`w-[18px] h-[18px] ${
-                        isActive ? 'text-white' : 'text-[#A1A1AA]'
-                      }`}
+                      className={`w-[18px] h-[18px] ${isActive ? 'text-white' : 'text-[#A1A1AA]'
+                        }`}
                       strokeWidth={1.75}
                     />
                     <span>{item.label}</span>
@@ -227,19 +223,17 @@ export function Sidebar({
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
-                  className={`w-full relative flex items-center gap-2.5 h-10 px-3 rounded-[7px] text-sm font-medium transition-all cursor-pointer ${
-                    isActive
+                  className={`w-full relative flex items-center gap-2.5 h-10 px-3 rounded-[7px] text-sm font-medium transition-all cursor-pointer ${isActive
                       ? 'bg-[#241A3A] text-white'
                       : 'text-[#A1A1AA] hover:bg-[#161A21] hover:text-[#F4F4F5]'
-                  }`}
+                    }`}
                 >
                   {isActive && (
                     <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r bg-[#7C3AED]" />
                   )}
                   <Icon
-                    className={`w-[18px] h-[18px] pl-1 ${
-                      isActive ? 'text-white' : 'text-[#A1A1AA]'
-                    }`}
+                    className={`w-[18px] h-[18px] pl-1 ${isActive ? 'text-white' : 'text-[#A1A1AA]'
+                      }`}
                     strokeWidth={1.75}
                   />
                   <span>{item.label}</span>

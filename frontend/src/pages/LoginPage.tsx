@@ -55,7 +55,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             <span>Data Agent v2.5</span>
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold text-[#18181B] tracking-tight leading-tight">
-            Autonomous <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4F46E5] via-[#6B63E8] to-[#9B78F0]">
               Data Agent Network
             </span>

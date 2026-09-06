@@ -10,8 +10,6 @@ import {
   History,
   LogOut,
   Sparkles,
-  Settings,
-  HelpCircle,
   Menu,
   X,
   Calendar,
@@ -35,7 +33,6 @@ export function TopNavbar({
   onLogout,
   userEmail,
 }: TopNavbarProps) {
-  const [showHelpModal, setShowHelpModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const rawEmail = userEmail || 'chandra@dataagent.ai';
@@ -161,28 +158,6 @@ export function TopNavbar({
             <span>{todayFormatted}</span>
           </div>
 
-          {/* Settings Button */}
-          <button
-            onClick={() => handleNavClick('settings')}
-            title="Settings"
-            className={`p-2 rounded-lg transition-colors cursor-pointer ${
-              currentPage === 'settings'
-                ? 'bg-[#241A3A] text-white border border-[#7C3AED]/40'
-                : 'text-[#A1A1AA] hover:text-[#F4F4F5] hover:bg-[#161A21]'
-            }`}
-          >
-            <Settings className="w-4 h-4" strokeWidth={1.75} />
-          </button>
-
-          {/* Help Button */}
-          <button
-            onClick={() => setShowHelpModal(true)}
-            title="Help & Support"
-            className="p-2 rounded-lg text-[#A1A1AA] hover:text-[#F4F4F5] hover:bg-[#161A21] transition-colors cursor-pointer"
-          >
-            <HelpCircle className="w-4 h-4" strokeWidth={1.75} />
-          </button>
-
           {/* User Profile Card */}
           <div className="flex items-center gap-2 bg-[#161A21] border border-[#272B33] rounded-lg p-1.5 pl-2">
             <div className="relative shrink-0">
@@ -256,7 +231,7 @@ export function TopNavbar({
 
           <div>
             <div className="px-2 mb-2 text-[10px] font-semibold tracking-wider text-[#71717A] uppercase">
-              Library & Settings
+              Library
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               {libraryNav.map((item) => {
@@ -277,71 +252,6 @@ export function TopNavbar({
                   </button>
                 );
               })}
-
-              <button
-                onClick={() => handleNavClick('settings')}
-                className={`flex items-center gap-2.5 h-9 px-3 rounded-lg text-xs font-medium ${
-                  currentPage === 'settings'
-                    ? 'bg-[#241A3A] text-white'
-                    : 'text-[#A1A1AA] hover:bg-[#161A21] hover:text-[#F4F4F5]'
-                }`}
-              >
-                <Settings className="w-4 h-4" />
-                <span>Settings</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* HELP & SUPPORT MODAL */}
-      {showHelpModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#161A21] border border-[#272B33] text-[#F4F4F5] rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#272B33] pb-3">
-              <div className="flex items-center gap-2">
-                <HelpCircle className="w-5 h-5 text-[#7C3AED]" />
-                <h3 className="text-base font-bold">Help & Support</h3>
-              </div>
-              <button
-                onClick={() => setShowHelpModal(false)}
-                className="text-[#A1A1AA] hover:text-white p-1 rounded-md"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-sm text-[#A1A1AA]">
-              <p>
-                <strong className="text-white">DataAgent.AI Engine v2.5</strong>
-              </p>
-              <p>
-                Data analytics pipeline powered by local statistical engines (Pandas/SciPy) and AI agent reasoning.
-              </p>
-
-              <div className="bg-[#0F1115] border border-[#272B33] rounded-lg p-3 space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-[#71717A]">Documentation</span>
-                  <span className="text-[#7C3AED] font-semibold">docs.dataagent.ai</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#71717A]">Support Email</span>
-                  <span className="text-white font-medium">support@dataagent.ai</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#71717A]">Engine Status</span>
-                  <span className="text-[#22C55E] font-medium">● Local Ollama Active</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                onClick={() => setShowHelpModal(false)}
-                className="px-4 py-2 bg-[#7C3AED] hover:bg-[#8B5CF6] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>

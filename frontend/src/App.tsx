@@ -10,7 +10,6 @@ import { ReportPage } from './pages/ReportPage';
 import { DatasetsPage } from './pages/DatasetsPage';
 import { AnalysesPage } from './pages/AnalysesPage';
 import { ReportsPage } from './pages/ReportsPage';
-import { SettingsPage } from './pages/SettingsPage';
 import { MOCK_ANALYSES } from './utils/testData';
 
 import { AnalysisSession, PageId } from './types';
@@ -168,9 +167,6 @@ export function App() {
             onStartNewAnalysis={() => setCurrentPage('new_analysis')}
           />
         )}
-
-        {/* PAGE: SETTINGS */}
-        {currentPage === 'settings' && <SettingsPage />}
       </main>
     </div>
   );

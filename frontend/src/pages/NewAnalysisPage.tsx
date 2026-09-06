@@ -52,8 +52,8 @@ export function NewAnalysisPage({ onStartInvestigation }: NewAnalysisPageProps) 
 
       try {
         await startInvestigation(analysisId, finalQuestion);
-      } catch {
-        // Fallback for dev mode
+      } catch (invErr: any) {
+        console.warn('Backend investigation auto-trigger warning:', invErr);
       }
 
       const newSession: AnalysisSession = {
@@ -73,19 +73,7 @@ export function NewAnalysisPage({ onStartInvestigation }: NewAnalysisPageProps) 
 
       onStartInvestigation(newSession);
     } catch (err: any) {
-      const mockSession: AnalysisSession = {
-        id: `analysis_${Date.now()}`,
-        datasetName: file.name,
-        filename: file.name,
-        question: finalQuestion,
-        status: 'RUNNING',
-        job_stage: 'UNDERSTANDING_QUESTION',
-        job_progress: 15,
-        createdAt: 'Just now',
-        rows: 500,
-        columns: 10,
-      };
-      onStartInvestigation(mockSession);
+      setError(err?.message || 'Failed to upload CSV dataset to backend server.');
     } finally {
       setLoading(false);
     }

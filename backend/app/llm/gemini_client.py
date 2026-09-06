@@ -5,7 +5,7 @@ import urllib.error
 from typing import Dict, Any, Optional
 
 DEFAULT_GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
-DEFAULT_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+DEFAULT_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 
 class GeminiClientError(Exception):
@@ -24,24 +24,24 @@ class GeminiClient:
     def check_health(self) -> Dict[str, Any]:
         """Check if Gemini API key is configured."""
         api_key = os.getenv("GEMINI_API_KEY") or self.api_key
-        model = os.getenv("GEMINI_MODEL") or self.model
+        model = os.getenv("GEMINI_MODEL") or self.model or "gemini-2.0-flash"
         if not api_key:
             return {"running": False, "models": [], "error": "GEMINI_API_KEY is not configured."}
         return {"running": True, "active_model": model, "models": [model]}
 
     def resolve_model(self) -> str:
-        model = os.getenv("GEMINI_MODEL") or self.model
+        model = os.getenv("GEMINI_MODEL") or self.model or "gemini-2.0-flash"
         return model
 
     def generate(self, prompt: str, system: Optional[str] = None, format_json: bool = False, temperature: float = 0.2) -> str:
         """Generate response from Google Gemini API."""
         api_key = os.getenv("GEMINI_API_KEY") or self.api_key
-        model = os.getenv("GEMINI_MODEL") or self.model
+        model = self.resolve_model()
         if not api_key:
             raise GeminiClientError("GEMINI_API_KEY is missing. Please set GEMINI_API_KEY in your environment.")
 
         # Gemini API Endpoint URL
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
 
         contents = [
             {
@@ -77,7 +77,7 @@ class GeminiClient:
             method="POST"
         )
 
-        timeout = int(os.getenv("LLM_TIMEOUT", "3"))
+        timeout = int(os.getenv("LLM_TIMEOUT", "45"))
         try:
             with urllib.request.urlopen(req, timeout=timeout) as response:
                 if response.status in (200, 201):

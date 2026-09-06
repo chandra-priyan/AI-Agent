@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional
 
 DEFAULT_OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", "")
 DEFAULT_OPENROUTER_URL = os.getenv("OPENROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
-DEFAULT_OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-oss-120b")
+DEFAULT_OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct")
 
 
 class OpenRouterClientError(Exception):
@@ -27,7 +27,7 @@ class OpenRouterClient:
     def check_health(self) -> Dict[str, Any]:
         """Check if OpenRouter API environment is set up."""
         api_key = os.getenv("OPENROUTER_API_KEY") or self.api_key
-        model = os.getenv("OPENROUTER_MODEL") or self.model
+        model = os.getenv("OPENROUTER_MODEL") or self.model or "meta-llama/llama-3.3-70b-instruct"
         if not api_key:
             return {"running": False, "models": [], "error": "OPENROUTER_API_KEY is not configured."}
         if not model:
@@ -35,7 +35,7 @@ class OpenRouterClient:
         return {"running": True, "active_model": model, "models": [model]}
 
     def resolve_model(self) -> str:
-        model = os.getenv("OPENROUTER_MODEL") or self.model
+        model = os.getenv("OPENROUTER_MODEL") or self.model or "meta-llama/llama-3.3-70b-instruct"
         if not model:
             raise OpenRouterClientError("OPENROUTER_MODEL is not configured in the environment.")
         return model
@@ -43,6 +43,7 @@ class OpenRouterClient:
     def generate(self, prompt: str, system: Optional[str] = None, format_json: bool = False, temperature: float = 0.2) -> str:
         """Generate response from OpenRouter API endpoint."""
         api_key = os.getenv("OPENROUTER_API_KEY") or self.api_key
+        api_url = os.getenv("OPENROUTER_API_URL") or self.api_url
         if not api_key:
             raise OpenRouterClientError("OPENROUTER_API_KEY is missing. Please set OPENROUTER_API_KEY in your environment.")
         
@@ -64,20 +65,20 @@ class OpenRouterClient:
         body = json.dumps(payload).encode("utf-8")
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {api_key}",
             "HTTP-Referer": "https://localhost:8000",
             "X-Title": "Autonomous Data Scientist",
             "User-Agent": "Mozilla/5.0"
         }
 
         req = urllib.request.Request(
-            self.api_url,
+            api_url,
             data=body,
             headers=headers,
             method="POST"
         )
 
-        timeout = int(os.getenv("LLM_TIMEOUT", "3"))
+        timeout = int(os.getenv("LLM_TIMEOUT", "45"))
         try:
             with urllib.request.urlopen(req, timeout=timeout) as response:
                 if response.status in (200, 201):

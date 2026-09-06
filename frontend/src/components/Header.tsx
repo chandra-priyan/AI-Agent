@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Sparkles, User, Bell, Calendar } from 'lucide-react';
+import { Menu, Sparkles, User, Calendar } from 'lucide-react';
 import { PageId } from '../types';
 import { getFormattedDate } from '../utils/dateUtils';
 
@@ -52,11 +52,6 @@ export function Header({ currentPage, onOpenMobileSidebar }: HeaderProps) {
           <Sparkles className="w-3.5 h-3.5 text-[#4F46E5]" />
           <span>Local Engine Ready</span>
         </div>
-
-        <button className="p-2 rounded-lg text-[#6B7280] hover:bg-[#F3F4F6] transition-colors relative cursor-pointer">
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#4F46E5]"></span>
-        </button>
 
         <div className="flex items-center gap-2 pl-3 border-l border-[#E5E7EB]">
           <div className="w-8 h-8 rounded-full bg-[#4F46E5] text-white font-bold text-xs flex items-center justify-center shadow-xs">

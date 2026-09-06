@@ -75,24 +75,68 @@ class CSVLoader:
     @staticmethod
     def get_dataset(dataset_id: str) -> pd.DataFrame:
         """Retrieve dataset DataFrame from in-memory cache, or load from disk if missing."""
-        if dataset_id not in _DATASETS:
-            file_path = os.path.join("data", "datasets", f"{dataset_id}.csv")
+        if dataset_id in _DATASETS:
+            return _DATASETS[dataset_id]
+
+        # Check data/datasets/{dataset_id}.csv
+        possible_paths = [
+            os.path.join("data", "datasets", f"{dataset_id}.csv"),
+            os.path.join("uploads", f"{dataset_id}.csv"),
+        ]
+
+        # Search uploads/ for pattern {dataset_id}_*
+        if os.path.exists("uploads"):
+            for fname in os.listdir("uploads"):
+                if fname.startswith(dataset_id) and fname.endswith(".csv"):
+                    possible_paths.append(os.path.join("uploads", fname))
+
+        for file_path in possible_paths:
             if os.path.exists(file_path):
                 try:
                     df = pd.read_csv(file_path)
+                    # Clean columns
+                    df.columns = [str(c).strip() for c in df.columns]
                     _DATASETS[dataset_id] = df
                     _METADATA[dataset_id] = {
                         "dataset_id": dataset_id,
-                        "filename": "dataset.csv",
+                        "filename": os.path.basename(file_path),
                         "rows": int(len(df)),
                         "columns": int(len(df.columns)),
                         "status": "ready"
                     }
                     return df
                 except Exception as e:
-                    raise DatasetLoadError(f"Failed to load dataset from disk: {e}")
-            raise DatasetLoadError(f"Dataset ID '{dataset_id}' not found.")
-        return _DATASETS[dataset_id]
+                    pass
+
+        # Fallback: find newest CSV file in data/datasets/ or uploads/
+        search_dirs = [os.path.join("data", "datasets"), "uploads"]
+        csv_files = []
+        for sdir in search_dirs:
+            if os.path.exists(sdir):
+                for fname in os.listdir(sdir):
+                    if fname.endswith(".csv"):
+                        full_p = os.path.join(sdir, fname)
+                        csv_files.append((os.path.getmtime(full_p), full_p))
+
+        if csv_files:
+            csv_files.sort(reverse=True)
+            newest_path = csv_files[0][1]
+            try:
+                df = pd.read_csv(newest_path)
+                df.columns = [str(c).strip() for c in df.columns]
+                _DATASETS[dataset_id] = df
+                _METADATA[dataset_id] = {
+                    "dataset_id": dataset_id,
+                    "filename": os.path.basename(newest_path),
+                    "rows": int(len(df)),
+                    "columns": int(len(df.columns)),
+                    "status": "ready"
+                }
+                return df
+            except Exception as e:
+                pass
+
+        raise DatasetLoadError(f"Dataset ID '{dataset_id}' not found and no CSV dataset available.")
 
     @staticmethod
     def store_dataset(dataset_id: str, df: pd.DataFrame, filename: str = "dataset.csv") -> None:

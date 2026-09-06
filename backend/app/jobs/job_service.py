@@ -1,9 +1,7 @@
 import datetime
 import logging
 from typing import Optional, Dict, Any
-from sqlalchemy.orm import Session
-from app.db.database import SessionLocal
-from app.db.models import AnalysisModel
+from app.repositories.mongo_repository import MongoRepository
 
 logger = logging.getLogger(__name__)
 
@@ -33,38 +31,36 @@ STAGE_MESSAGES = {
     "FAILED": "Investigation could not be completed"
 }
 
-class JobService:
-    @staticmethod
-    def create_job(analysis_id: str, question: str, user_id: Optional[str] = None) -> Optional[AnalysisModel]:
-        """Creates or initializes a background job record in QUEUED state."""
-        db = SessionLocal()
-        try:
-            analysis = db.query(AnalysisModel).filter(AnalysisModel.id == analysis_id).first()
-            if not analysis:
-                analysis = AnalysisModel(
-                    id=analysis_id,
-                    user_id=user_id,
-                    dataset_id=analysis_id,
-                    question=question,
-                    status="QUEUED",
-                    job_stage="UNDERSTANDING_QUESTION",
-                    job_progress=5
-                )
-                db.add(analysis)
-            else:
-                if user_id:
-                    analysis.user_id = user_id
-                analysis.question = question
-                analysis.status = "QUEUED"
-                analysis.job_stage = "UNDERSTANDING_QUESTION"
-                analysis.job_progress = 5
-                analysis.updated_at = datetime.datetime.utcnow()
 
-            db.commit()
-            db.refresh(analysis)
-            return analysis
-        finally:
-            db.close()
+class JobService:
+    """Manages background investigation job states stored in MongoDB Atlas."""
+
+    @staticmethod
+    def create_job(analysis_id: str, question: str, user_id: Optional[str] = None) -> Dict[str, Any]:
+        """Creates or initializes a background job record in QUEUED state in MongoDB Atlas."""
+        analysis = MongoRepository.get_analysis(analysis_id, user_id)
+        if not analysis:
+            analysis = MongoRepository.create_analysis(
+                analysis_id=analysis_id,
+                question=question,
+                filename="dataset.csv",
+                dataset_id=analysis_id,
+                user_id=user_id
+            )
+        
+        MongoRepository.get_analyses_collection().update_one(
+            {"_id": analysis_id},
+            {"$set": {
+                "question": question,
+                "status": "QUEUED",
+                "job_stage": "UNDERSTANDING_QUESTION",
+                "job_progress": 5,
+                "user_id": user_id or analysis.get("user_id", "system"),
+                "updated_at": datetime.datetime.utcnow().isoformat()
+            }}
+        )
+        return MongoRepository.get_analysis(analysis_id, user_id)
+
     @staticmethod
     def update_job_status(
         analysis_id: str,
@@ -73,131 +69,105 @@ class JobService:
         progress: Optional[int] = None,
         message: Optional[str] = None,
         error_summary: Optional[str] = None,
-        db: Optional[Session] = None
-    ) -> Optional[AnalysisModel]:
-        """Persists job status, stage, progress (0-100), and error summary in database."""
-        opened = False
-        if db is None:
-            db = SessionLocal()
-            opened = True
-
+        db: Optional[Any] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Persists job status, stage, progress (0-100), and error summary in MongoDB Atlas."""
         try:
-            analysis = db.query(AnalysisModel).filter(AnalysisModel.id == analysis_id).first()
-            if not analysis:
-                logger.warning(f"Cannot update status for nonexistent analysis {analysis_id}")
-                return None
-
-            analysis.status = status
+            update_fields: Dict[str, Any] = {
+                "status": status,
+                "updated_at": datetime.datetime.utcnow().isoformat()
+            }
             if stage:
-                analysis.job_stage = stage
+                update_fields["job_stage"] = stage
             if progress is not None:
-                analysis.job_progress = min(100, max(0, progress))
-
-            if status == "RUNNING" and not analysis.started_at:
-                analysis.started_at = datetime.datetime.utcnow()
-            elif status in ("COMPLETED", "FAILED", "CANCELLED"):
-                analysis.completed_at = datetime.datetime.utcnow()
-
+                update_fields["job_progress"] = min(100, max(0, progress))
             if error_summary:
-                analysis.error_summary = error_summary
+                update_fields["error_summary"] = error_summary
 
-            analysis.updated_at = datetime.datetime.utcnow()
-            db.commit()
-            db.refresh(analysis)
-            return analysis
+            if status == "RUNNING":
+                update_fields["started_at"] = datetime.datetime.utcnow().isoformat()
+            elif status in ("COMPLETED", "FAILED", "CANCELLED"):
+                update_fields["completed_at"] = datetime.datetime.utcnow().isoformat()
+
+            MongoRepository.get_analyses_collection().update_one(
+                {"_id": analysis_id},
+                {"$set": update_fields}
+            )
+            return MongoRepository.get_analysis(analysis_id)
         except Exception as e:
-            logger.error(f"Failed to update job status for {analysis_id}: {e}")
-            db.rollback()
+            logger.error(f"Failed to update job status in MongoDB Atlas for {analysis_id}: {e}")
             return None
-        finally:
-            if opened:
-                db.close()
 
     @staticmethod
     def get_job_status(analysis_id: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        """Fetches job status, progress, stage, and safe user message."""
-        db = SessionLocal()
-        try:
-            query = db.query(AnalysisModel).filter(AnalysisModel.id == analysis_id)
-            if user_id:
-                query = query.filter(AnalysisModel.user_id == user_id)
-            analysis = query.first()
+        """Fetches job status, progress, stage, and user message from MongoDB Atlas."""
+        analysis = MongoRepository.get_analysis(analysis_id, user_id)
+        if not analysis:
+            return None
 
-            if not analysis:
-                return None
+        stage = analysis.get("job_stage") or "UNDERSTANDING_QUESTION"
+        msg = STAGE_MESSAGES.get(stage, "Processing investigation...")
 
-            stage = analysis.job_stage or "UNDERSTANDING_QUESTION"
-            msg = STAGE_MESSAGES.get(stage, "Processing investigation...")
+        if analysis.get("status") == "FAILED":
+            msg = "Investigation could not be completed."
 
-            if analysis.status == "FAILED":
-                msg = "Investigation could not be completed."
+        started_at = analysis.get("started_at")
+        completed_at = analysis.get("completed_at")
 
-            return {
-                "analysis_id": analysis.id,
-                "dataset_id": analysis.dataset_id or analysis.id,
-                "status": analysis.status,
-                "stage": stage,
-                "progress": analysis.job_progress,
-                "message": msg,
-                "user_question": analysis.question,
-                "started_at": analysis.started_at.strftime("%Y-%m-%d %H:%M") if analysis.started_at else None,
-                "completed_at": analysis.completed_at.strftime("%Y-%m-%d %H:%M") if analysis.completed_at else None,
-                "error_summary": analysis.error_summary if analysis.status == "FAILED" else None
-            }
-        finally:
-            db.close()
+        return {
+            "analysis_id": analysis_id,
+            "dataset_id": analysis.get("dataset_id", analysis_id),
+            "status": analysis.get("status", "QUEUED"),
+            "stage": stage,
+            "progress": analysis.get("job_progress", 0),
+            "message": msg,
+            "user_question": analysis.get("question", ""),
+            "started_at": started_at[:16].replace("T", " ") if started_at else None,
+            "completed_at": completed_at[:16].replace("T", " ") if completed_at else None,
+            "error_summary": analysis.get("error_summary") if analysis.get("status") == "FAILED" else None
+        }
 
     @staticmethod
     def retry_job(analysis_id: str, user_id: Optional[str] = None) -> bool:
-        """Resets a FAILED or CANCELLED job back to QUEUED for worker execution."""
-        db = SessionLocal()
-        try:
-            query = db.query(AnalysisModel).filter(AnalysisModel.id == analysis_id)
-            if user_id:
-                query = query.filter(AnalysisModel.user_id == user_id)
-            analysis = query.first()
+        """Resets a FAILED or CANCELLED job back to QUEUED for worker execution in MongoDB Atlas."""
+        analysis = MongoRepository.get_analysis(analysis_id, user_id)
+        if not analysis:
+            return False
 
-            if not analysis:
-                return False
+        if analysis.get("status") not in ("FAILED", "CANCELLED", "COMPLETED"):
+            return False
 
-            if analysis.status not in ("FAILED", "CANCELLED", "COMPLETED"):
-                return False
-
-            analysis.status = "QUEUED"
-            analysis.job_stage = "UNDERSTANDING_QUESTION"
-            analysis.job_progress = 0
-            analysis.error_summary = None
-            analysis.started_at = None
-            analysis.completed_at = None
-            analysis.updated_at = datetime.datetime.utcnow()
-
-            db.commit()
-            return True
-        finally:
-            db.close()
+        MongoRepository.get_analyses_collection().update_one(
+            {"_id": analysis_id},
+            {"$set": {
+                "status": "QUEUED",
+                "job_stage": "UNDERSTANDING_QUESTION",
+                "job_progress": 0,
+                "error_summary": None,
+                "started_at": None,
+                "completed_at": None,
+                "updated_at": datetime.datetime.utcnow().isoformat()
+            }}
+        )
+        return True
 
     @staticmethod
     def cancel_job(analysis_id: str, user_id: Optional[str] = None) -> bool:
-        """Cancels a QUEUED or RUNNING job safely."""
-        db = SessionLocal()
-        try:
-            query = db.query(AnalysisModel).filter(AnalysisModel.id == analysis_id)
-            if user_id:
-                query = query.filter(AnalysisModel.user_id == user_id)
-            analysis = query.first()
+        """Cancels a QUEUED or RUNNING job safely in MongoDB Atlas."""
+        analysis = MongoRepository.get_analysis(analysis_id, user_id)
+        if not analysis:
+            return False
 
-            if not analysis:
-                return False
+        if analysis.get("status") in ("COMPLETED", "CANCELLED"):
+            return False
 
-            if analysis.status in ("COMPLETED", "CANCELLED"):
-                return False
-
-            analysis.status = "CANCELLED"
-            analysis.job_stage = "FAILED"
-            analysis.completed_at = datetime.datetime.utcnow()
-            analysis.updated_at = datetime.datetime.utcnow()
-
-            db.commit()
-            return True
-        finally:
-            db.close()
+        MongoRepository.get_analyses_collection().update_one(
+            {"_id": analysis_id},
+            {"$set": {
+                "status": "CANCELLED",
+                "job_stage": "FAILED",
+                "completed_at": datetime.datetime.utcnow().isoformat(),
+                "updated_at": datetime.datetime.utcnow().isoformat()
+            }}
+        )
+        return True

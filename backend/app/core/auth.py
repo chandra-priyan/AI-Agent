@@ -9,10 +9,8 @@ import logging
 from typing import Optional, Dict, Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
 
-from app.db.database import SessionLocal, get_db
-from app.db.models import UserModel
+from app.repositories.mongo_repository import MongoRepository
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +20,13 @@ ACCESS_TOKEN_EXPIRE_SECONDS = 60 * 60 * 24 * 7  # 7 days
 
 security_scheme = HTTPBearer(auto_error=False)
 
+
 def hash_password(password: str) -> str:
     """Hashes password using PBKDF2 HMAC SHA256 with a unique random salt."""
     salt = secrets.token_bytes(16)
     key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
     return base64.b64encode(salt + key).decode('ascii')
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifies plain password against stored PBKDF2 hash."""
@@ -39,12 +39,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     except Exception:
         return False
 
+
 def _b64url_encode(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b'=').decode('ascii')
 
-def _b64url_decode(encoded_str: str) -> bytes:
-    padding = '=' * (4 - (len(encoded_str) % 4))
-    return base64.urlsafe_b64encode(base64.urlsafe_b64decode(encoded_str + padding))
 
 def create_access_token(data: Dict[str, Any], expires_delta_seconds: Optional[int] = None) -> str:
     """Creates signed HS256 JWT access token."""
@@ -63,6 +61,7 @@ def create_access_token(data: Dict[str, Any], expires_delta_seconds: Optional[in
     sig_b64 = _b64url_encode(signature)
 
     return f"{header_b64}.{payload_b64}.{sig_b64}"
+
 
 def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
     """Decodes and validates signed JWT token."""
@@ -90,11 +89,11 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
         logger.warning(f"Failed to decode token: {e}")
         return None
 
+
 def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
-    db: Session = Depends(get_db)
-) -> UserModel:
-    """FastAPI security dependency enforcing valid user authentication."""
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme)
+) -> Dict[str, Any]:
+    """FastAPI security dependency enforcing valid user authentication against MongoDB Atlas."""
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -112,8 +111,7 @@ def get_current_user(
         )
 
     user_id = payload["sub"]
-    db.expire_all()
-    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    user = MongoRepository.get_user_by_id(user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -123,14 +121,14 @@ def get_current_user(
 
     return user
 
+
 def get_optional_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
-    db: Session = Depends(get_db)
-) -> Optional[UserModel]:
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme)
+) -> Optional[Dict[str, Any]]:
     """FastAPI security dependency returning user if valid token provided, else None."""
     if not credentials or not credentials.credentials:
         return None
     try:
-        return get_current_user(credentials, db)
+        return get_current_user(credentials)
     except Exception:
         return None

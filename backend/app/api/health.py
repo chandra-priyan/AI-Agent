@@ -1,8 +1,6 @@
 import logging
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from sqlalchemy import text
-from app.db.database import get_db
+from fastapi import APIRouter
+from app.db.mongodb import get_mongo_db
 from app.llm.service import LLMService
 
 logger = logging.getLogger(__name__)
@@ -10,16 +8,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/health", tags=["Health Checks"])
 llm_service = LLMService()
 
+
 @router.get("")
 @router.get("/")
-def get_application_health(db: Session = Depends(get_db)):
-    """Health check endpoint verifying FastAPI, Database, Groq LLM, and Background Worker status."""
-    db_status = "healthy"
+def get_application_health():
+    """Health check endpoint verifying FastAPI, MongoDB Atlas connection, LLMs, and Worker status."""
+    db_status = "connected"
     try:
-        db.execute(text("SELECT 1"))
+        db = get_mongo_db()
+        db.command("ping")
     except Exception as e:
-        logger.error(f"Database health check failed: {e}")
-        db_status = "unhealthy"
+        logger.error(f"MongoDB Atlas health check failed: {e}")
+        db_status = "disconnected"
 
     status_info = llm_service.get_status()
     models_status = status_info.get("models", {})
@@ -35,13 +35,14 @@ def get_application_health(db: Session = Depends(get_db)):
         gemini_status == "healthy" or
         openrouter_status == "healthy"
     )
-    overall = "healthy" if (db_status == "healthy" and llm_healthy) else "degraded"
+    overall = "healthy" if (db_status == "connected" and llm_healthy) else "degraded"
 
     return {
         "status": overall,
         "services": {
             "backend": "healthy",
             "database": db_status,
+            "mongodb_atlas": db_status,
             "ollama": ollama_status,
             "groq": groq_status,
             "gemini": gemini_status,
@@ -51,4 +52,3 @@ def get_application_health(db: Session = Depends(get_db)):
         "active_model": status_info.get("active_model"),
         "error": status_info.get("error") if not llm_healthy else None
     }
-

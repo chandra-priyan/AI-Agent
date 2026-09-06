@@ -32,68 +32,53 @@ class LLMService:
         self.openrouter_client = openrouter_client or OpenRouterClient()
 
         # Failover tracking metadata
-        self.last_provider_used = "ollama"
+        self.last_provider_used = "groq"
         self.last_fallback_used = False
         self.last_fallback_reason = None
 
-        # Pre-disable known invalid keys to bypass useless network requests
-        if "invalid" in getattr(self.groq_client, "api_key", "").lower():
-            LLMService._disabled_providers.add("groq")
-        if "invalid" in getattr(self.gemini_client, "api_key", "").lower():
-            LLMService._disabled_providers.add("gemini")
+        # Reset disabled providers cache on initialization
+        LLMService._disabled_providers = set()
+        LLMService._all_providers_disabled = False
 
-        # Startup check: if Ollama is not running, pre-disable it to avoid network hangs
-        try:
-            ollama_status = self.ollama_client.check_health()
-            if not ollama_status.get("running", False):
-                LLMService._disabled_providers.add("ollama")
-        except Exception:
-            LLMService._disabled_providers.add("ollama")
+        # Pre-disable known invalid keys to bypass useless network requests
+        if not getattr(self.groq_client, "api_key", "") or "invalid" in getattr(self.groq_client, "api_key", "").lower():
+            LLMService._disabled_providers.add("groq")
+        if not getattr(self.openrouter_client, "api_key", "") or "invalid" in getattr(self.openrouter_client, "api_key", "").lower():
+            LLMService._disabled_providers.add("openrouter")
+        if not getattr(self.gemini_client, "api_key", "") or "invalid" in getattr(self.gemini_client, "api_key", "").lower():
+            LLMService._disabled_providers.add("gemini")
 
     def get_status(self) -> Dict[str, Any]:
         """Get status of all four LLM providers."""
-        if LLMService._all_providers_disabled:
-            return {
-                "running": False,
-                "active_model": None,
-                "models": {
-                    "ollama": {"running": False, "models": []},
-                    "groq": {"running": False, "models": []},
-                    "gemini": {"running": False, "models": []},
-                    "openrouter": {"running": False, "models": []}
-                },
-                "error": "AI service temporarily unavailable. Please try again later."
-            }
-
-        ollama_health = self.ollama_client.check_health()
         groq_health = self.groq_client.check_health()
-        gemini_health = self.gemini_client.check_health()
         openrouter_health = self.openrouter_client.check_health()
+        gemini_health = self.gemini_client.check_health()
+        ollama_health = self.ollama_client.check_health()
 
         running = (
-            ollama_health["running"] or
             groq_health["running"] or
+            openrouter_health["running"] or
             gemini_health["running"] or
-            openrouter_health["running"]
+            ollama_health["running"]
         )
         active_model = None
-        if ollama_health["running"] and "ollama" not in LLMService._disabled_providers:
-            active_model = self.ollama_client.resolve_model()
-        elif groq_health["running"] and "groq" not in LLMService._disabled_providers:
+        if groq_health["running"] and "groq" not in LLMService._disabled_providers:
             active_model = self.groq_client.resolve_model()
-        elif gemini_health["running"] and "gemini" not in LLMService._disabled_providers:
-            active_model = self.gemini_client.resolve_model()
         elif openrouter_health["running"] and "openrouter" not in LLMService._disabled_providers:
             active_model = self.openrouter_client.resolve_model()
+        elif gemini_health["running"] and "gemini" not in LLMService._disabled_providers:
+            active_model = self.gemini_client.resolve_model()
+        elif ollama_health["running"] and "ollama" not in LLMService._disabled_providers:
+            active_model = self.ollama_client.resolve_model()
 
         return {
             "running": running,
             "active_model": active_model,
             "models": {
-                "ollama": ollama_health,
                 "groq": groq_health,
+                "openrouter": openrouter_health,
                 "gemini": gemini_health,
-                "openrouter": openrouter_health
+                "ollama": ollama_health
             },
             "error": None if running else "AI service temporarily unavailable. Please try again later."
         }
@@ -105,47 +90,18 @@ class LLMService:
         format_json: bool = False,
         temperature: float = 0.2
     ) -> str:
-        """Sequential failover: Ollama -> Groq -> Gemini -> OpenRouter."""
-        if LLMService._all_providers_disabled:
-            raise Exception("AI service temporarily unavailable. Please try again later.")
-
-        self.last_provider_used = "ollama"
+        """Sequential failover: Groq -> OpenRouter -> Gemini -> Ollama."""
+        self.last_provider_used = "groq"
         self.last_fallback_used = False
         self.last_fallback_reason = None
 
         errors = []
 
-        # 1. Try Ollama (Primary)
-        if "ollama" not in LLMService._disabled_providers:
-            try:
-                model_name = self.ollama_client.resolve_model()
-                logger.info("LLM provider: Ollama")
-                logger.info(f"Ollama model: {model_name}")
-                logger.info("Ollama status: available")
-                
-                response = self.ollama_client.generate(
-                    prompt=prompt,
-                    system=system,
-                    format_json=format_json,
-                    temperature=temperature
-                )
-                if format_json:
-                    json.loads(response) # Validate JSON format
-                return response
-            except Exception as e:
-                err_msg = f"Ollama failed: {str(e)}"
-                errors.append(err_msg)
-                LLMService._disabled_providers.add("ollama")
-                logger.warning("Ollama unavailable → trying Groq")
-        else:
-            errors.append("Ollama bypassed (pre-disabled or failed)")
-
-        # 2. Try Groq (Fallback 1)
-        self.last_provider_used = "groq"
-        self.last_fallback_used = True
+        # 1. Try Groq (Primary)
         if "groq" not in LLMService._disabled_providers:
             try:
-                logger.info("Attempting Groq provider")
+                model_name = self.groq_client.resolve_model()
+                logger.info(f"[LLM] Trying Groq provider with model: {model_name}")
                 response = self.groq_client.generate(
                     prompt=prompt,
                     system=system,
@@ -154,44 +110,24 @@ class LLMService:
                 )
                 if format_json:
                     json.loads(response) # Validate JSON format
+                self.last_provider_used = "groq"
+                logger.info("[LLM] Groq call succeeded.")
                 return response
             except Exception as e:
                 err_msg = f"Groq failed: {str(e)}"
                 errors.append(err_msg)
                 LLMService._disabled_providers.add("groq")
-                logger.warning("Groq unavailable → trying Gemini")
+                logger.warning(f"[LLM] Groq unavailable -> trying OpenRouter. Error: {e}")
         else:
             errors.append("Groq bypassed (pre-disabled or failed)")
 
-        # 3. Try Gemini (Fallback 2)
-        self.last_provider_used = "gemini"
-        self.last_fallback_used = True
-        if "gemini" not in LLMService._disabled_providers:
-            try:
-                logger.info("Attempting Gemini provider")
-                response = self.gemini_client.generate(
-                    prompt=prompt,
-                    system=system,
-                    format_json=format_json,
-                    temperature=temperature
-                )
-                if format_json:
-                    json.loads(response) # Validate JSON format
-                return response
-            except Exception as e:
-                err_msg = f"Gemini failed: {str(e)}"
-                errors.append(err_msg)
-                LLMService._disabled_providers.add("gemini")
-                logger.warning("Gemini unavailable → trying OpenRouter")
-        else:
-            errors.append("Gemini bypassed (pre-disabled or failed)")
-
-        # 4. Try OpenRouter (Fallback 3)
+        # 2. Try OpenRouter (Fallback 1)
         self.last_provider_used = "openrouter"
         self.last_fallback_used = True
         if "openrouter" not in LLMService._disabled_providers:
             try:
-                logger.info("Attempting OpenRouter provider")
+                model_name = self.openrouter_client.resolve_model()
+                logger.info(f"[LLM] Trying OpenRouter provider with model: {model_name}")
                 response = self.openrouter_client.generate(
                     prompt=prompt,
                     system=system,
@@ -200,19 +136,70 @@ class LLMService:
                 )
                 if format_json:
                     json.loads(response) # Validate JSON format
+                logger.info("[LLM] OpenRouter call succeeded.")
                 return response
             except Exception as e:
                 err_msg = f"OpenRouter failed: {str(e)}"
                 errors.append(err_msg)
                 LLMService._disabled_providers.add("openrouter")
-                logger.error(f"All LLM providers failed. OpenRouter error: {e}")
+                logger.warning(f"[LLM] OpenRouter unavailable -> trying Gemini. Error: {e}")
         else:
             errors.append("OpenRouter bypassed (pre-disabled or failed)")
+
+        # 3. Try Gemini (Fallback 2)
+        self.last_provider_used = "gemini"
+        self.last_fallback_used = True
+        if "gemini" not in LLMService._disabled_providers:
+            try:
+                model_name = self.gemini_client.resolve_model()
+                logger.info(f"[LLM] Trying Gemini provider with model: {model_name}")
+                response = self.gemini_client.generate(
+                    prompt=prompt,
+                    system=system,
+                    format_json=format_json,
+                    temperature=temperature
+                )
+                if format_json:
+                    json.loads(response) # Validate JSON format
+                logger.info("[LLM] Gemini call succeeded.")
+                return response
+            except Exception as e:
+                err_msg = f"Gemini failed: {str(e)}"
+                errors.append(err_msg)
+                LLMService._disabled_providers.add("gemini")
+                logger.warning(f"[LLM] Gemini unavailable -> trying Ollama. Error: {e}")
+        else:
+            errors.append("Gemini bypassed (pre-disabled or failed)")
+
+        # 4. Try Ollama (Fallback 3 - Local)
+        self.last_provider_used = "ollama"
+        self.last_fallback_used = True
+        if "ollama" not in LLMService._disabled_providers:
+            try:
+                model_name = self.ollama_client.resolve_model()
+                logger.info(f"[LLM] Trying Ollama provider with model: {model_name}")
+                response = self.ollama_client.generate(
+                    prompt=prompt,
+                    system=system,
+                    format_json=format_json,
+                    temperature=temperature
+                )
+                if format_json:
+                    json.loads(response) # Validate JSON format
+                logger.info("[LLM] Ollama call succeeded.")
+                return response
+            except Exception as e:
+                err_msg = f"Ollama failed: {str(e)}"
+                errors.append(err_msg)
+                LLMService._disabled_providers.add("ollama")
+                logger.error(f"[LLM] All LLM providers failed. Ollama error: {e}")
+        else:
+            errors.append("Ollama bypassed (pre-disabled or failed)")
 
         # All providers failed! Set fallback reasons and raise exception
         self.last_fallback_reason = "; ".join(errors)
         LLMService._all_providers_disabled = True
-        raise Exception("AI service temporarily unavailable. Please try again later.")
+        raise Exception(f"All LLM providers failed: {self.last_fallback_reason}")
 
 
     async def generate(self, prompt: str, system: Optional[str] = None, format_json: bool = False, **kwargs) -> str:

@@ -131,7 +131,41 @@ export function Sidebar({
         )}
       </div>
 
-      {/* 3. NAVIGATION SECTIONS */}
+      {/* 3. TOP SECONDARY NAVIGATION: SETTINGS & HELP */}
+      <div className="px-3 py-2.5 border-b border-[#272B33] space-y-1">
+        <button
+          onClick={() => handleNavClick('settings')}
+          className={`w-full relative flex items-center gap-2.5 h-9 px-3 rounded-[7px] text-sm font-medium transition-all cursor-pointer ${
+            currentPage === 'settings'
+              ? 'bg-[#241A3A] text-white'
+              : 'text-[#A1A1AA] hover:bg-[#161A21] hover:text-[#F4F4F5]'
+          }`}
+        >
+          {currentPage === 'settings' && (
+            <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r bg-[#7C3AED]" />
+          )}
+          <Settings
+            className={`w-[18px] h-[18px] pl-1 ${
+              currentPage === 'settings' ? 'text-white' : 'text-[#A1A1AA]'
+            }`}
+            strokeWidth={1.75}
+          />
+          <span>Settings</span>
+        </button>
+
+        <button
+          onClick={() => setShowHelpModal(true)}
+          className="w-full flex items-center justify-between h-9 px-3 rounded-[7px] text-sm font-medium text-[#A1A1AA] hover:bg-[#161A21] hover:text-[#F4F4F5] transition-all cursor-pointer"
+        >
+          <div className="flex items-center gap-2.5 pl-1">
+            <HelpCircle className="w-[18px] h-[18px] text-[#A1A1AA]" strokeWidth={1.75} />
+            <span>Help & Support</span>
+          </div>
+          <ChevronRight className="w-3.5 h-3.5 text-[#71717A]" />
+        </button>
+      </div>
+
+      {/* 4. NAVIGATION SECTIONS */}
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
         {/* WORKSPACE */}
         <div>
@@ -212,45 +246,6 @@ export function Sidebar({
                 </button>
               );
             })}
-          </nav>
-        </div>
-
-        {/* APPLICATION */}
-        <div>
-          <div className="px-2 mb-2 text-[11px] font-semibold tracking-[0.08em] text-[#71717A] uppercase">
-            APPLICATION
-          </div>
-          <nav className="space-y-1">
-            <button
-              onClick={() => handleNavClick('settings')}
-              className={`w-full relative flex items-center gap-2.5 h-10 px-3 rounded-[7px] text-sm font-medium transition-all cursor-pointer ${
-                currentPage === 'settings'
-                  ? 'bg-[#241A3A] text-white'
-                  : 'text-[#A1A1AA] hover:bg-[#161A21] hover:text-[#F4F4F5]'
-              }`}
-            >
-              {currentPage === 'settings' && (
-                <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r bg-[#7C3AED]" />
-              )}
-              <Settings
-                className={`w-[18px] h-[18px] pl-1 ${
-                  currentPage === 'settings' ? 'text-white' : 'text-[#A1A1AA]'
-                }`}
-                strokeWidth={1.75}
-              />
-              <span>Settings</span>
-            </button>
-
-            <button
-              onClick={() => setShowHelpModal(true)}
-              className="w-full flex items-center justify-between h-10 px-3 rounded-[7px] text-sm font-medium text-[#A1A1AA] hover:bg-[#161A21] hover:text-[#F4F4F5] transition-all cursor-pointer"
-            >
-              <div className="flex items-center gap-2.5 pl-1">
-                <HelpCircle className="w-[18px] h-[18px] text-[#A1A1AA]" strokeWidth={1.75} />
-                <span>Help & Support</span>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-[#71717A]" />
-            </button>
           </nav>
         </div>
       </div>

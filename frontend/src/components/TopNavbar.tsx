@@ -6,8 +6,6 @@ import {
   BarChart3,
   MessageSquare,
   FileText,
-  Database,
-  History,
   LogOut,
   Sparkles,
   Menu,
@@ -52,12 +50,6 @@ export function TopNavbar({
     { id: 'results' as PageId, label: 'Results', icon: BarChart3 },
     { id: 'ai_chat' as PageId, label: 'AI Chat', icon: MessageSquare },
     { id: 'report' as PageId, label: 'Executive Report', icon: FileText },
-  ];
-
-  const libraryNav = [
-    { id: 'datasets' as PageId, label: 'Datasets', icon: Database },
-    { id: 'analyses' as PageId, label: 'All Analyses', icon: History },
-    { id: 'reports' as PageId, label: 'Saved Reports', icon: FileText },
   ];
 
   const handleNavClick = (pageId: PageId) => {
@@ -112,33 +104,6 @@ export function TopNavbar({
                     title="Active Investigation Running"
                   />
                 )}
-              </button>
-            );
-          })}
-
-          <div className="h-4 w-px bg-[#272B33] mx-1" />
-
-          {libraryNav.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentPage === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className={`relative flex items-center gap-2 h-9 px-3 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap cursor-pointer ${
-                  isActive
-                    ? 'bg-[#241A3A] text-white shadow-xs'
-                    : 'text-[#A1A1AA] hover:bg-[#161A21] hover:text-[#F4F4F5]'
-                }`}
-              >
-                {isActive && (
-                  <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-[#7C3AED] rounded-t-full" />
-                )}
-                <Icon
-                  className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#A1A1AA]'}`}
-                  strokeWidth={1.75}
-                />
-                <span>{item.label}</span>
               </button>
             );
           })}
@@ -209,32 +174,6 @@ export function TopNavbar({
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               {mainNav.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentPage === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNavClick(item.id)}
-                    className={`flex items-center gap-2.5 h-9 px-3 rounded-lg text-xs font-medium ${
-                      isActive
-                        ? 'bg-[#241A3A] text-white'
-                        : 'text-[#A1A1AA] hover:bg-[#161A21] hover:text-[#F4F4F5]'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <div className="px-2 mb-2 text-[10px] font-semibold tracking-wider text-[#71717A] uppercase">
-              Library
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {libraryNav.map((item) => {
                 const Icon = item.icon;
                 const isActive = currentPage === item.id;
                 return (

@@ -7,9 +7,6 @@ import { InvestigationPage } from './pages/InvestigationPage';
 import { ResultsPage } from './pages/ResultsPage';
 import { AIChatPage } from './pages/AIChatPage';
 import { ReportPage } from './pages/ReportPage';
-import { DatasetsPage } from './pages/DatasetsPage';
-import { AnalysesPage } from './pages/AnalysesPage';
-import { ReportsPage } from './pages/ReportsPage';
 import { MOCK_ANALYSES } from './utils/testData';
 
 import { AnalysisSession, PageId } from './types';
@@ -131,39 +128,6 @@ export function App() {
         {currentPage === 'report' && (
           <ReportPage
             session={activeSession || MOCK_ANALYSES[0]}
-            onStartNewAnalysis={() => setCurrentPage('new_analysis')}
-          />
-        )}
-
-        {/* PAGE: DATASETS */}
-        {currentPage === 'datasets' && (
-          <DatasetsPage
-            recentAnalyses={recentAnalyses}
-            onStartNewAnalysis={() => setCurrentPage('new_analysis')}
-            onSelectDatasetForAnalysis={() => setCurrentPage('new_analysis')}
-          />
-        )}
-
-        {/* PAGE: ANALYSES */}
-        {currentPage === 'analyses' && (
-          <AnalysesPage
-            recentAnalyses={recentAnalyses}
-            onSelectAnalysis={(session) => {
-              setActiveSession(session);
-              setCurrentPage('results');
-            }}
-            onStartNewAnalysis={() => setCurrentPage('new_analysis')}
-          />
-        )}
-
-        {/* PAGE: REPORTS */}
-        {currentPage === 'reports' && (
-          <ReportsPage
-            recentAnalyses={recentAnalyses}
-            onSelectReport={(session) => {
-              setActiveSession(session);
-              setCurrentPage('report');
-            }}
             onStartNewAnalysis={() => setCurrentPage('new_analysis')}
           />
         )}

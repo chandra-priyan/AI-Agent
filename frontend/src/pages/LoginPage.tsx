@@ -52,12 +52,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-purple-200/60 shadow-xs text-[#4F46E5] text-xs font-bold mb-6">
             <Sparkles className="w-4 h-4 text-[#6B63E8]" />
-            <span>Autonomous Data Agent v2.5</span>
+            <span>Data Agent v2.5</span>
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold text-[#18181B] tracking-tight leading-tight">
-            Autonomous Data <br />
+            Autonomous <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4F46E5] via-[#6B63E8] to-[#9B78F0]">
-              Agent Network
+              Data Agent Network
             </span>
           </h1>
           <p className="text-sm text-gray-600 max-w-md mt-4 leading-relaxed font-normal">

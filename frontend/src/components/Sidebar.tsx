@@ -39,7 +39,7 @@ export function Sidebar({
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   // Format user display name from email or default to Chandra
-  const rawEmail = userEmail || 'chandra@datascientist.ai';
+  const rawEmail = userEmail || 'chandra@dataagent.ai';
   const namePart = rawEmail.split('@')[0];
   const userName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
 
@@ -112,7 +112,7 @@ export function Sidebar({
           </div>
           <div>
             <h1 className="text-[15px] font-bold text-[#F4F4F5] leading-tight tracking-tight">
-              DataScientist.AI
+              DataAgent.AI
             </h1>
             <p className="text-[11px] text-[#A1A1AA] font-normal">
               Autonomous Analytics Engine
@@ -278,11 +278,11 @@ export function Sidebar({
               <div className="bg-[#0F1115] border border-[#272B33] rounded-lg p-3 space-y-2 text-xs">
                 <div className="flex justify-between">
                   <span className="text-[#71717A]">Documentation</span>
-                  <span className="text-[#7C3AED] font-semibold">docs.datascientist.ai</span>
+                  <span className="text-[#7C3AED] font-semibold">docs.dataagent.ai</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#71717A]">Support Email</span>
-                  <span className="text-white font-medium">support@datascientist.ai</span>
+                  <span className="text-white font-medium">support@dataagent.ai</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#71717A]">Engine Status</span>

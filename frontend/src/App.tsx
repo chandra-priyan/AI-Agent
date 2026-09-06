@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Sidebar } from './components/Sidebar';
-import { Header } from './components/Header';
+import { TopNavbar } from './components/TopNavbar';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { NewAnalysisPage } from './pages/NewAnalysisPage';
@@ -23,7 +22,6 @@ export function App() {
   const [currentPage, setCurrentPage] = useState<PageId>('dashboard');
   const [recentAnalyses, setRecentAnalyses] = useState<AnalysisSession[]>(MOCK_ANALYSES);
   const [activeSession, setActiveSession] = useState<AnalysisSession | null>(MOCK_ANALYSES[0]);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   useEffect(() => {
     localStorage.removeItem('auth_token');
@@ -38,26 +36,24 @@ export function App() {
             setActiveSession(history[0]);
           } else {
             setRecentAnalyses(MOCK_ANALYSES);
-            setActiveSession(MOCK_ANALYSES[0]);
           }
         })
         .catch(() => {
           setRecentAnalyses(MOCK_ANALYSES);
-          setActiveSession(MOCK_ANALYSES[0]);
         });
     }
   }, [isLoggedIn]);
 
   const handleLoginSuccess = (email?: string) => {
-    setIsLoggedIn(true);
     if (email) setUserEmail(email);
+    setIsLoggedIn(true);
     setCurrentPage('dashboard');
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('auth_token');
     setIsLoggedIn(false);
     setUserEmail('');
-    localStorage.removeItem('auth_token');
     setCurrentPage('login');
   };
 
@@ -77,116 +73,105 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-[#111111] flex font-sans antialiased selection:bg-[#4F46E5] selection:text-white">
-      {/* Global Sidebar Navigation */}
-      <Sidebar
+    <div className="min-h-screen bg-[#F7F7FA] text-[#111111] flex flex-col font-sans antialiased selection:bg-[#4F46E5] selection:text-white">
+      {/* Top Navigation Bar */}
+      <TopNavbar
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         hasActiveAnalysis={!!activeSession}
         onLogout={handleLogout}
         userEmail={userEmail}
-        isOpenMobile={isMobileSidebarOpen}
-        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
-      {/* Main Container */}
-      <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden">
-        {/* Header Bar */}
-        <Header
-          currentPage={currentPage}
-          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
-        />
+      {/* Main View Area */}
+      <main className="flex-1 p-4 md:p-8 max-w-[1700px] w-full mx-auto overflow-y-auto">
+        {/* PAGE: DASHBOARD */}
+        {currentPage === 'dashboard' && (
+          <DashboardPage
+            onStartNewAnalysis={() => setCurrentPage('new_analysis')}
+            onSelectAnalysis={(session) => {
+              setActiveSession(session);
+              setCurrentPage('results');
+            }}
+            recentAnalyses={recentAnalyses}
+          />
+        )}
 
-        {/* Main View Area */}
-        <main className="flex-1 p-6 overflow-y-auto">
-          {/* PAGE: DASHBOARD */}
-          {currentPage === 'dashboard' && (
-            <DashboardPage
-              onStartNewAnalysis={() => setCurrentPage('new_analysis')}
-              onSelectAnalysis={(session) => {
-                setActiveSession(session);
-                setCurrentPage('results');
-              }}
-              recentAnalyses={recentAnalyses}
-            />
-          )}
+        {/* PAGE: NEW ANALYSIS */}
+        {currentPage === 'new_analysis' && (
+          <NewAnalysisPage onStartInvestigation={handleStartInvestigation} />
+        )}
 
-          {/* PAGE: NEW ANALYSIS */}
-          {currentPage === 'new_analysis' && (
-            <NewAnalysisPage onStartInvestigation={handleStartInvestigation} />
-          )}
+        {/* PAGE: INVESTIGATION */}
+        {currentPage === 'investigation' && (
+          <InvestigationPage
+            session={activeSession || MOCK_ANALYSES[0]}
+            onInvestigationComplete={handleInvestigationComplete}
+          />
+        )}
 
-          {/* PAGE: INVESTIGATION */}
-          {currentPage === 'investigation' && (
-            <InvestigationPage
-              session={activeSession || MOCK_ANALYSES[0]}
-              onInvestigationComplete={handleInvestigationComplete}
-            />
-          )}
+        {/* PAGE: RESULTS */}
+        {currentPage === 'results' && (
+          <ResultsPage
+            session={activeSession || MOCK_ANALYSES[0]}
+            onAskFollowUp={() => setCurrentPage('ai_chat')}
+            onGenerateReport={() => setCurrentPage('report')}
+          />
+        )}
 
-          {/* PAGE: RESULTS */}
-          {currentPage === 'results' && (
-            <ResultsPage
-              session={activeSession || MOCK_ANALYSES[0]}
-              onAskFollowUp={() => setCurrentPage('ai_chat')}
-              onGenerateReport={() => setCurrentPage('report')}
-            />
-          )}
+        {/* PAGE: AI CHAT */}
+        {currentPage === 'ai_chat' && (
+          <AIChatPage
+            session={activeSession || MOCK_ANALYSES[0]}
+            onGoToReport={() => setCurrentPage('report')}
+            onStartNewAnalysis={() => setCurrentPage('new_analysis')}
+          />
+        )}
 
-          {/* PAGE: AI CHAT */}
-          {currentPage === 'ai_chat' && (
-            <AIChatPage
-              session={activeSession || MOCK_ANALYSES[0]}
-              onGoToReport={() => setCurrentPage('report')}
-              onStartNewAnalysis={() => setCurrentPage('new_analysis')}
-            />
-          )}
+        {/* PAGE: REPORT */}
+        {currentPage === 'report' && (
+          <ReportPage
+            session={activeSession || MOCK_ANALYSES[0]}
+            onStartNewAnalysis={() => setCurrentPage('new_analysis')}
+          />
+        )}
 
-          {/* PAGE: REPORT */}
-          {currentPage === 'report' && (
-            <ReportPage
-              session={activeSession || MOCK_ANALYSES[0]}
-              onStartNewAnalysis={() => setCurrentPage('new_analysis')}
-            />
-          )}
+        {/* PAGE: DATASETS */}
+        {currentPage === 'datasets' && (
+          <DatasetsPage
+            recentAnalyses={recentAnalyses}
+            onStartNewAnalysis={() => setCurrentPage('new_analysis')}
+            onSelectDatasetForAnalysis={() => setCurrentPage('new_analysis')}
+          />
+        )}
 
-          {/* PAGE: DATASETS */}
-          {currentPage === 'datasets' && (
-            <DatasetsPage
-              recentAnalyses={recentAnalyses}
-              onStartNewAnalysis={() => setCurrentPage('new_analysis')}
-              onSelectDatasetForAnalysis={() => setCurrentPage('new_analysis')}
-            />
-          )}
+        {/* PAGE: ANALYSES */}
+        {currentPage === 'analyses' && (
+          <AnalysesPage
+            recentAnalyses={recentAnalyses}
+            onSelectAnalysis={(session) => {
+              setActiveSession(session);
+              setCurrentPage('results');
+            }}
+            onStartNewAnalysis={() => setCurrentPage('new_analysis')}
+          />
+        )}
 
-          {/* PAGE: ANALYSES */}
-          {currentPage === 'analyses' && (
-            <AnalysesPage
-              recentAnalyses={recentAnalyses}
-              onSelectAnalysis={(session) => {
-                setActiveSession(session);
-                setCurrentPage('results');
-              }}
-              onStartNewAnalysis={() => setCurrentPage('new_analysis')}
-            />
-          )}
+        {/* PAGE: REPORTS */}
+        {currentPage === 'reports' && (
+          <ReportsPage
+            recentAnalyses={recentAnalyses}
+            onSelectReport={(session) => {
+              setActiveSession(session);
+              setCurrentPage('report');
+            }}
+            onStartNewAnalysis={() => setCurrentPage('new_analysis')}
+          />
+        )}
 
-          {/* PAGE: REPORTS */}
-          {currentPage === 'reports' && (
-            <ReportsPage
-              recentAnalyses={recentAnalyses}
-              onSelectReport={(session) => {
-                setActiveSession(session);
-                setCurrentPage('report');
-              }}
-              onStartNewAnalysis={() => setCurrentPage('new_analysis')}
-            />
-          )}
-
-          {/* PAGE: SETTINGS */}
-          {currentPage === 'settings' && <SettingsPage />}
-        </main>
-      </div>
+        {/* PAGE: SETTINGS */}
+        {currentPage === 'settings' && <SettingsPage />}
+      </main>
     </div>
   );
 }

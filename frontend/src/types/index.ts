@@ -8,6 +8,7 @@ export type PageId =
   | 'datasets'
   | 'analyses'
   | 'reports'
+  | 'settings'
   | 'login';
 
 export type JobStatus = 'CREATED' | 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';

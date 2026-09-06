@@ -11,6 +11,7 @@ import { ReportPage } from './pages/ReportPage';
 import { DatasetsPage } from './pages/DatasetsPage';
 import { AnalysesPage } from './pages/AnalysesPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { MOCK_ANALYSES } from './utils/testData';
 
 import { AnalysisSession, PageId } from './types';
@@ -22,6 +23,7 @@ export function App() {
   const [currentPage, setCurrentPage] = useState<PageId>('dashboard');
   const [recentAnalyses, setRecentAnalyses] = useState<AnalysisSession[]>(MOCK_ANALYSES);
   const [activeSession, setActiveSession] = useState<AnalysisSession | null>(MOCK_ANALYSES[0]);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   useEffect(() => {
     localStorage.removeItem('auth_token');
@@ -83,12 +85,17 @@ export function App() {
         hasActiveAnalysis={!!activeSession}
         onLogout={handleLogout}
         userEmail={userEmail}
+        isOpenMobile={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden">
         {/* Header Bar */}
-        <Header currentPage={currentPage} />
+        <Header
+          currentPage={currentPage}
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+        />
 
         {/* Main View Area */}
         <main className="flex-1 p-6 overflow-y-auto">
@@ -175,6 +182,9 @@ export function App() {
               onStartNewAnalysis={() => setCurrentPage('new_analysis')}
             />
           )}
+
+          {/* PAGE: SETTINGS */}
+          {currentPage === 'settings' && <SettingsPage />}
         </main>
       </div>
     </div>

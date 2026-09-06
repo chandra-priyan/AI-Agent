@@ -18,6 +18,7 @@ const PAGE_TITLES: Record<PageId, { title: string; subtitle: string }> = {
   datasets: { title: 'Datasets Library', subtitle: 'Manage uploaded CSV files and dataset metadata' },
   analyses: { title: 'All Analyses', subtitle: 'History of autonomous investigations and sessions' },
   reports: { title: 'Saved Reports', subtitle: 'Exportable decision documents and findings' },
+  settings: { title: 'Engine Settings', subtitle: 'Configure local Ollama, fallback LLM providers, and analytical thresholds' },
   login: { title: 'Authentication', subtitle: 'Sign in to Autonomous Data Scientist' },
 };
 

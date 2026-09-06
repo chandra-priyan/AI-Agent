@@ -70,7 +70,34 @@ export function Sidebar({
 
   const sidebarContent = (
     <aside className="w-[260px] bg-[#0F1115] text-[#F4F4F5] flex flex-col h-screen shrink-0 border-r border-[#272B33] select-none font-sans">
-      {/* 1. USER PROFILE — VERY TOP */}
+      {/* 1. TOP HEADER — PRODUCT BRANDING */}
+      <div className="p-4 border-b border-[#272B33] flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-7.5 h-7.5 rounded-lg bg-[#161A21] border border-[#272B33] flex items-center justify-center shrink-0 shadow-xs">
+            <Sparkles className="w-4 h-4 text-[#7C3AED]" strokeWidth={2} />
+          </div>
+          <div>
+            <h1 className="text-[15px] font-bold text-[#F4F4F5] leading-tight tracking-tight">
+              DataAgent.AI
+            </h1>
+            <p className="text-[11px] text-[#A1A1AA] font-normal">
+              Autonomous Analytics Engine
+            </p>
+          </div>
+        </div>
+
+        {onCloseMobile && (
+          <button
+            onClick={onCloseMobile}
+            aria-label="Close sidebar"
+            className="md:hidden text-[#A1A1AA] hover:text-[#F4F4F5] p-1 rounded-md"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      {/* 2. USER PROFILE CARD */}
       <div className="p-3 border-b border-[#272B33]">
         <div className="bg-[#161A21] border border-[#272B33] rounded-lg p-2.5 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -102,33 +129,6 @@ export function Sidebar({
             <LogOut className="w-4 h-4" strokeWidth={1.75} />
           </button>
         </div>
-      </div>
-
-      {/* 2. BRANDING AREA */}
-      <div className="p-4 border-b border-[#272B33] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg bg-[#161A21] border border-[#272B33] flex items-center justify-center shrink-0">
-            <Sparkles className="w-4 h-4 text-[#7C3AED]" strokeWidth={2} />
-          </div>
-          <div>
-            <h1 className="text-[15px] font-bold text-[#F4F4F5] leading-tight tracking-tight">
-              DataAgent.AI
-            </h1>
-            <p className="text-[11px] text-[#A1A1AA] font-normal">
-              Autonomous Analytics Engine
-            </p>
-          </div>
-        </div>
-
-        {onCloseMobile && (
-          <button
-            onClick={onCloseMobile}
-            aria-label="Close sidebar"
-            className="md:hidden text-[#A1A1AA] hover:text-[#F4F4F5] p-1 rounded-md"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        )}
       </div>
 
       {/* 3. TOP SECONDARY NAVIGATION: SETTINGS & HELP */}

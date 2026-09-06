@@ -19,11 +19,11 @@ const PAGE_TITLES: Record<PageId, { title: string; subtitle: string }> = {
   analyses: { title: 'All Analyses', subtitle: 'History of autonomous investigations and sessions' },
   reports: { title: 'Saved Reports', subtitle: 'Exportable decision documents and findings' },
   settings: { title: 'Engine Settings', subtitle: 'Configure local Ollama, fallback LLM providers, and analytical thresholds' },
-  login: { title: 'Authentication', subtitle: 'Sign in to Autonomous Data Scientist' },
+  login: { title: 'Authentication', subtitle: 'Sign in to Autonomous Data Agent' },
 };
 
 export function Header({ currentPage, onOpenMobileSidebar }: HeaderProps) {
-  const info = PAGE_TITLES[currentPage] || { title: 'Autonomous Data Scientist', subtitle: 'AI-Powered Data Science Engine' };
+  const info = PAGE_TITLES[currentPage] || { title: 'Autonomous Data Agent', subtitle: 'AI-Powered Data Science Engine' };
   const todayFormatted = getFormattedDate();
 
   return (

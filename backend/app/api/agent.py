@@ -116,10 +116,10 @@ async def upload_analysis_dataset(
 @router.get("/history")
 @router.get("/analyses")
 async def get_analyses_history(
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
     """Retrieve history of saved analyses from MongoDB Atlas filtered for authenticated user."""
-    user_id = current_user.get("id")
+    user_id = current_user.get("id") if current_user else None
     return PersistenceService.list_analyses(user_id=user_id)
 
 

@@ -18,12 +18,11 @@ router = APIRouter(prefix="/api/v1/analysis", tags=["Analysis"])
 @router.post("/upload")
 async def upload_csv_endpoint(
     file: UploadFile = File(...),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user),
-    db: Session = Depends(get_db)
+    current_user: Optional[UserModel] = Depends(get_optional_current_user)
 ):
     """CSV upload endpoint delegating to main agent upload handler."""
     from app.api import agent
-    return await agent.upload_analysis_dataset(file=file, current_user=current_user, db=db)
+    return await agent.upload_analysis_dataset(file=file, current_user=current_user)
 
 @router.get("/{dataset_id}/profile")
 def get_dataset_profile(dataset_id: str):

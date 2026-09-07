@@ -128,14 +128,14 @@ class AIChatEngine:
         history: List[Dict[str, Any]],
         analysis: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Perform exact Pandas computations based on user query + dataset columns."""
+        """Perform comprehensive, dynamic Pandas computations across all CSV columns."""
         num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
         cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
         date_cols = [c for c in df.columns if 'date' in c.lower() or 'time' in c.lower() or 'month' in c.lower() or 'year' in c.lower()]
 
         q_lower = question.lower()
 
-        # Combine with recent history to resolve pronouns ("Why?", "What about South region?", etc.)
+        # Combine with recent history to resolve follow-up context
         prev_user_text = ""
         for item in reversed(history):
             if item.get("role") == "user" or item.get("sender") == "user":
@@ -144,162 +144,103 @@ class AIChatEngine:
 
         combined_text = f"{prev_user_text} {q_lower}"
 
-        # Determine target metric column
-        target_num = None
-        for col in num_cols:
-            if col.lower() in combined_text:
-                target_num = col
-                break
-        if not target_num:
-            metric_synonyms = ["sales", "revenue", "amount", "profit", "price", "cost", "quantity", "val", "score"]
-            for syn in metric_synonyms:
-                for col in num_cols:
-                    if syn in col.lower():
-                        target_num = col
-                        break
-                if target_num:
-                    break
-        if not target_num and num_cols:
-            target_num = num_cols[0]
+        calculations = [
+            f"Dataset Overview: {len(df)} rows across {len(df.columns)} columns ({', '.join(df.columns)})."
+        ]
 
-        # Determine group dimension column
-        group_cat = None
+        # 1. Provide complete distinct value listing & value counts for ALL categorical columns
+        cat_summaries = []
         for col in cat_cols:
-            if col.lower() in combined_text:
-                group_cat = col
-                break
-        if not group_cat:
-            dim_synonyms = ["region", "product", "category", "segment", "country", "state", "store", "customer", "type", "channel"]
-            for syn in dim_synonyms:
-                for col in cat_cols:
-                    if syn in col.lower():
-                        group_cat = col
-                        break
-                if group_cat:
-                    break
-        if not group_cat and cat_cols:
-            group_cat = cat_cols[0]
+            try:
+                val_counts = df[col].dropna().value_counts()
+                top_vals = val_counts.head(10)
+                tot = len(df)
+                val_str = ", ".join([f"{idx}: {cnt} ({cnt/tot*100:.1f}%)" for idx, cnt in top_vals.items()])
+                cat_summaries.append(f"Categorical attribute '{col}' values (total unique: {len(val_counts)}): {val_str}")
+            except Exception as e_cat:
+                logger.debug(f"Categorical summary error for {col}: {e_cat}")
 
-        evidence: Dict[str, Any] = {
-            "target_metric": target_num,
-            "group_dimension": group_cat,
-            "row_count": len(df),
-            "calculations": []
-        }
+        if cat_summaries:
+            calculations.extend(cat_summaries)
 
-        # 1. Total & Summary stats for target metric
-        if target_num and target_num in df.columns:
-            tot_sum = float(df[target_num].sum())
-            mean_val = float(df[target_num].mean())
-            min_val = float(df[target_num].min())
-            max_val = float(df[target_num].max())
+        # 2. Total & Summary stats for ALL numerical columns
+        num_summaries = []
+        for col in num_cols:
+            try:
+                tot_sum = float(df[col].sum())
+                mean_val = float(df[col].mean())
+                min_val = float(df[col].min())
+                max_val = float(df[col].max())
+                num_summaries.append(f"Numerical attribute '{col}': Total Sum = {tot_sum:,.2f}, Average = {mean_val:,.2f}, Min = {min_val:,.2f}, Max = {max_val:,.2f}")
+            except Exception as e_num:
+                logger.debug(f"Numeric summary error for {col}: {e_num}")
 
-            evidence["metric_summary"] = {
-                "metric": target_num,
-                "total_sum": round(tot_sum, 2),
-                "mean": round(mean_val, 2),
-                "min": round(min_val, 2),
-                "max": round(max_val, 2)
-            }
-            evidence["calculations"].append(f"Total {target_num}: {tot_sum:,.2f}, Average: {mean_val:,.2f}, Range: [{min_val:,.2f} to {max_val:,.2f}]")
+        if num_summaries:
+            calculations.extend(num_summaries)
 
-        # 2. Categorical Group Aggregation & Ranking
-        if group_cat and target_num and group_cat in df.columns and target_num in df.columns:
-            grp = df.groupby(group_cat)[target_num].agg(['sum', 'mean', 'count']).reset_index()
-            total_sum = grp['sum'].sum()
-            grp['percentage'] = (grp['sum'] / total_sum * 100).round(2) if total_sum != 0 else 0
-            grp_sorted = grp.sort_values(by='sum', ascending=False)
+        # 3. Dynamic Group Aggregations (Numerical metric grouped by Categorical attribute)
+        for cat in cat_cols[:3]: # Top 3 categorical columns
+            for num in num_cols[:2]: # Top 2 numeric columns
+                try:
+                    grp = df.groupby(cat)[num].agg(['sum', 'mean', 'count']).reset_index()
+                    tot_s = grp['sum'].sum()
+                    grp['pct'] = (grp['sum'] / tot_s * 100).round(1) if tot_s != 0 else 0
+                    grp_sorted = grp.sort_values(by='sum', ascending=False).head(5)
+                    b_str = ", ".join([f"{r[cat]}: sum={r['sum']:,.2f} ({r['pct']}%, avg={r['mean']:,.2f})" for _, r in grp_sorted.iterrows()])
+                    calculations.append(f"Group Aggregation: '{num}' grouped by '{cat}': {b_str}")
+                except Exception as e_grp:
+                    logger.debug(f"Group aggregation error: {e_grp}")
 
-            top_row = grp_sorted.iloc[0]
-            bottom_row = grp_sorted.iloc[-1]
+        # 4. Keyword & Subgroup Search across all string values in dataset
+        matched_filters = []
+        words = [w.strip() for w in re.split(r'\W+', combined_text) if len(w.strip()) > 2]
+        for col in cat_cols:
+            unique_vals = df[col].dropna().astype(str).unique()
+            for val in unique_vals:
+                val_l = val.lower()
+                if any(w in val_l for w in words) or val_l in combined_text:
+                    sub_df = df[df[col].astype(str).str.lower() == val_l]
+                    if len(sub_df) > 0:
+                        pct_rows = (len(sub_df) / len(df)) * 100
+                        sub_info = f"Specific Subgroup Match '{val}' in column '{col}': {len(sub_df)} rows ({pct_rows:.1f}% of total)"
+                        if num_cols:
+                            num_sub = []
+                            for num_c in num_cols[:2]:
+                                s_sum = float(sub_df[num_c].sum())
+                                s_avg = float(sub_df[num_c].mean())
+                                num_sub.append(f"{num_c} Total={s_sum:,.2f} (Avg={s_avg:,.2f})")
+                            sub_info += f" | {', '.join(num_sub)}"
+                        matched_filters.append(sub_info)
 
-            evidence["group_ranking"] = {
-                "dimension": group_cat,
-                "top_performer": {
-                    "category": str(top_row[group_cat]),
-                    "sum": round(float(top_row['sum']), 2),
-                    "percentage": float(top_row['percentage'])
-                },
-                "lowest_performer": {
-                    "category": str(bottom_row[group_cat]),
-                    "sum": round(float(bottom_row['sum']), 2),
-                    "percentage": float(bottom_row['percentage'])
-                },
-                "breakdown": [
-                    {
-                        "category": str(row[group_cat]),
-                        "sum": round(float(row['sum']), 2),
-                        "mean": round(float(row['mean']), 2),
-                        "percentage": float(row['percentage'])
-                    }
-                    for _, row in grp_sorted.head(10).iterrows()
-                ]
-            }
+        if matched_filters:
+            calculations.append("SUBGROUP QUERY MATCHES:")
+            calculations.extend(matched_filters[:5])
 
-            breakdown_str = ", ".join([f"{r['category']}: {r['sum']:,.2f} ({r['percentage']}%)" for r in evidence["group_ranking"]["breakdown"][:5]])
-            evidence["calculations"].append(f"Breakdown of {target_num} by {group_cat}: {breakdown_str}")
-
-        # 3. Check for specific filtering (e.g. "South region", "East vs West")
-        if group_cat and group_cat in df.columns:
-            unique_vals = df[group_cat].dropna().astype(str).unique()
-            matched_vals = [val for val in unique_vals if val.lower() in q_lower]
-            if matched_vals:
-                filter_evidence = []
-                for val in matched_vals:
-                    sub_df = df[df[group_cat].astype(str).str.lower() == val.lower()]
-                    if target_num and target_num in sub_df.columns:
-                        sub_sum = float(sub_df[target_num].sum())
-                        sub_mean = float(sub_df[target_num].mean())
-                        sub_pct = (sub_sum / evidence["metric_summary"]["total_sum"] * 100) if evidence.get("metric_summary", {}).get("total_sum") else 0
-                        filter_evidence.append(f"Segment '{val}': Total {target_num} = {sub_sum:,.2f} ({sub_pct:.1f}% of overall), Average = {sub_mean:,.2f}, Rows = {len(sub_df)}")
-                evidence["specific_filter"] = filter_evidence
-                evidence["calculations"].extend(filter_evidence)
-
-        # 4. Period-over-Period / Time Series Trend Analysis if Date Column exists
-        if date_cols and target_num:
+        # 5. Time Series Trend if date column exists
+        if date_cols and num_cols:
             date_col = date_cols[0]
+            num_col = num_cols[0]
             try:
                 df_sorted = df.copy()
                 df_sorted[date_col] = pd.to_datetime(df_sorted[date_col], errors='coerce')
                 df_sorted = df_sorted.dropna(subset=[date_col]).sort_values(by=date_col)
                 if len(df_sorted) >= 4:
                     half = len(df_sorted) // 2
-                    early_sum = float(df_sorted.iloc[:half][target_num].sum())
-                    late_sum = float(df_sorted.iloc[half:][target_num].sum())
+                    early_sum = float(df_sorted.iloc[:half][num_col].sum())
+                    late_sum = float(df_sorted.iloc[half:][num_col].sum())
                     delta = late_sum - early_sum
                     pct_delta = (delta / early_sum * 100) if early_sum != 0 else 0
+                    t_dir = "increased" if delta >= 0 else "decreased"
+                    calculations.append(f"Time Series Trend ({num_col} over {date_col}): {t_dir} by {abs(delta):,.2f} ({abs(pct_delta):.1f}%) from early ({early_sum:,.2f}) to late ({late_sum:,.2f}).")
+            except Exception as e_dt:
+                logger.debug(f"Date trend error: {e_dt}")
 
-                    evidence["period_trend"] = {
-                        "early_period_sum": round(early_sum, 2),
-                        "late_period_sum": round(late_sum, 2),
-                        "delta": round(delta, 2),
-                        "pct_delta": round(pct_delta, 2)
-                    }
-                    trend_dir = "increased" if delta >= 0 else "decreased"
-                    evidence["calculations"].append(
-                        f"Time series trend for {target_num}: {trend_dir} by {abs(delta):,.2f} ({abs(pct_delta):.1f}%) from early period ({early_sum:,.2f}) to late period ({late_sum:,.2f})."
-                    )
-            except Exception as e_date:
-                logger.debug(f"Date parsing skipped in chat engine: {e_date}")
-
-        # 5. Numerical Correlations
-        if len(num_cols) > 1:
-            try:
-                corr_matrix = df[num_cols].corr()
-                top_corrs = []
-                for i in range(len(num_cols)):
-                    for j in range(i+1, len(num_cols)):
-                        c1, c2 = num_cols[i], num_cols[j]
-                        val = float(corr_matrix.loc[c1, c2])
-                        if not np.isnan(val) and abs(val) > 0.2:
-                            top_corrs.append(f"Correlation ({c1} vs {c2}) = {val:+.2f}")
-                if top_corrs:
-                    evidence["correlations"] = top_corrs[:4]
-                    evidence["calculations"].append("Key correlations: " + "; ".join(top_corrs[:4]))
-            except Exception as e_corr:
-                logger.debug(f"Correlation calculation skipped: {e_corr}")
-
-        evidence["summary_text"] = "\n".join(evidence["calculations"])
+        evidence = {
+            "row_count": len(df),
+            "col_count": len(df.columns),
+            "calculations": calculations,
+            "summary_text": "\n".join(calculations)
+        }
         return evidence
 
     def _build_grounded_chat_prompt(

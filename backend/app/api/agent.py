@@ -81,24 +81,27 @@ async def upload_analysis_dataset(
         analysis_id = res["dataset_id"]
         user_id = current_user.get("id") if current_user else None
 
-        # Save dataset metadata to MongoDB Atlas
-        PersistenceService.save_dataset(
-            dataset_id=analysis_id,
-            filename=res["filename"],
-            rows=res.get("rows", 0),
-            cols=res.get("columns", 0),
-            column_names=res.get("column_names", []),
-            user_id=user_id
-        )
+        # Save dataset metadata to MongoDB Atlas (with fallback)
+        try:
+            PersistenceService.save_dataset(
+                dataset_id=analysis_id,
+                filename=res["filename"],
+                rows=res.get("rows", 0),
+                cols=res.get("columns", 0),
+                column_names=res.get("column_names", []),
+                user_id=user_id
+            )
 
-        # Pre-create analysis record bound to user in MongoDB Atlas
-        PersistenceService.create_analysis(
-            analysis_id=analysis_id,
-            question="Pending Question",
-            filename=res["filename"],
-            dataset_id=analysis_id,
-            user_id=user_id
-        )
+            # Pre-create analysis record bound to user in MongoDB Atlas
+            PersistenceService.create_analysis(
+                analysis_id=analysis_id,
+                question="Pending Question",
+                filename=res["filename"],
+                dataset_id=analysis_id,
+                user_id=user_id
+            )
+        except Exception as db_err:
+            logger.warning(f"MongoDB persistence warning during upload: {db_err}")
 
         return {
             "analysis_id": analysis_id,

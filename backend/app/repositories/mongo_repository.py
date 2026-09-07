@@ -17,6 +17,26 @@ logger = logging.getLogger(__name__)
 class MongoRepository:
     """Centralized repository providing CRUD access to MongoDB Atlas collections."""
 
+    @staticmethod
+    def get_users_collection():
+        return get_users_collection()
+
+    @staticmethod
+    def get_datasets_collection():
+        return get_datasets_collection()
+
+    @staticmethod
+    def get_analyses_collection():
+        return get_analyses_collection()
+
+    @staticmethod
+    def get_chat_messages_collection():
+        return get_chat_messages_collection()
+
+    @staticmethod
+    def get_reports_collection():
+        return get_reports_collection()
+
     # ----------------------------------------------------
     # USER OPERATIONS
     # ----------------------------------------------------

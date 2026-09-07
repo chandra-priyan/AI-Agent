@@ -68,7 +68,17 @@ def login(req: LoginRequest):
     """Authenticates user email and password against MongoDB Atlas, returning JWT access token."""
     email = req.email.strip().lower()
     user = MongoRepository.get_user_by_email(email)
-    if not user or not verify_password(req.password, user.get("password_hash", "")):
+    if not user:
+        if "@" in email and len(req.password) >= 6:
+            uid = f"usr_{uuid.uuid4().hex[:12]}"
+            pwd_hash = hash_password(req.password)
+            user = MongoRepository.create_user(email=email, password_hash=pwd_hash, user_id=uid)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password."
+            )
+    elif not verify_password(req.password, user.get("password_hash", "")):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password."

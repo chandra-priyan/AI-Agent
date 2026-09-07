@@ -48,15 +48,31 @@ def build_report_data(analysis_id: str, current_user: Optional[Dict[str, Any]]) 
     if not session:
         session = verify_analysis_ownership(analysis_id, current_user)
 
-    row_count = session.get("datasetProfile", {}).get("rowCount", 0) if session.get("datasetProfile") else 0
-    findings = [f.get("summary") if isinstance(f, dict) else str(f) for f in session.get("findings", [])] if session.get("findings") else []
-    if not findings and session.get("conclusion"):
-        findings = [session.get("conclusion")]
+    # Fetch persistent chat history for this analysis
+    chat_history = PersistenceService.get_chat_history(analysis_id, user_id=user_id) or []
 
-    recommendations = [r.get("text") if isinstance(r, dict) else str(r) for r in session.get("recommendations", [])] if session.get("recommendations") else [
-        "Monitor top predictive feature correlations in future cycles.",
-        "Segment low-performing sub-categories for targeted operational adjustments."
-    ]
+    ds_profile = session.get("datasetProfile") or session.get("dataset_profile") or {}
+    row_count = ds_profile.get("rowCount") or ds_profile.get("rows") or session.get("rows", 0)
+    col_count = ds_profile.get("colCount") or ds_profile.get("columns") or session.get("columns", 0)
+
+    findings = session.get("findings", [])
+    if not findings and session.get("conclusion"):
+        findings = [
+            {
+                "id": "f_1",
+                "category": "Executive Synthesis",
+                "title": "Autonomous Investigation Finding",
+                "summary": session.get("conclusion"),
+                "confidence": "HIGH"
+            }
+        ]
+
+    recommendations = session.get("recommendations", [])
+    if not recommendations:
+        recommendations = [
+            {"id": "rec_1", "text": "Monitor top predictive feature correlations in future operational cycles.", "priority": "high"},
+            {"id": "rec_2", "text": "Segment low-performing sub-categories for targeted operational adjustments.", "priority": "medium"}
+        ]
 
     report_title = f"{session.get('datasetName', 'Dataset')} Executive Investigation Report"
     report_id = f"report_{analysis_id}"
@@ -67,12 +83,18 @@ def build_report_data(analysis_id: str, current_user: Optional[Dict[str, Any]]) 
         "title": report_title,
         "generatedAt": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
         "executiveSummary": session.get("conclusion") or "Autonomous statistical analysis completed with verified analytical findings.",
-        "businessQuestion": session.get("question") or "Business Query",
-        "datasetOverview": f"{session.get('datasetName', 'dataset.csv')} ({row_count:,} rows)",
-        "keyFindings": findings or ["Statistically significant correlation detected across primary metrics."],
+        "businessQuestion": session.get("question") or session.get("user_question") or "Business Investigation Query",
+        "datasetOverview": f"{session.get('datasetName', 'dataset.csv')} ({row_count:,} rows, {col_count} attributes)",
+        "datasetProfile": ds_profile,
+        "keyFindings": findings,
         "hypotheses": session.get("hypotheses") or [],
         "validation": session.get("validation") or {"isVerified": True, "metrics": {}, "rationale": "Verified via calculation engine"},
         "recommendations": recommendations,
+        "chatHistory": chat_history,
+        "evidence": session.get("evidence") or [],
+        "auditTrail": session.get("auditTrail") or session.get("audit_trail") or [],
+        "whatIfAnalysis": session.get("whatIfAnalysis") or session.get("what_if_analysis") or {},
+        "predictions": session.get("predictions") or {},
         "limitations": session.get("limitations") or [
             "Analysis based on provided historical snapshot.",
             "External macroeconomic indicators were not present in dataset schema."
@@ -103,7 +125,18 @@ async def generate_analysis_report(
         conclusion=report_data["executiveSummary"],
         findings=report_data["keyFindings"],
         user_id=user_id,
-        status="GENERATED"
+        status="GENERATED",
+        chat_history=report_data["chatHistory"],
+        dataset_profile=report_data["datasetProfile"],
+        evidence=report_data["evidence"],
+        audit_trail=report_data["auditTrail"],
+        recommendations=report_data["recommendations"],
+        hypotheses=report_data["hypotheses"],
+        validation=report_data["validation"],
+        what_if_analysis=report_data["whatIfAnalysis"],
+        predictions=report_data["predictions"],
+        business_question=report_data["businessQuestion"],
+        dataset_overview=report_data["datasetOverview"]
     )
 
     return report_data
@@ -117,8 +150,14 @@ async def get_report_by_analysis_id(
     """Retrieve executive report for given analysis session."""
     user_id = current_user.get("id") if current_user else None
     saved_report = MongoRepository.get_report(f"report_{analysis_id}", user_id=user_id)
+    
+    # Always fetch current chat history to guarantee latest messages are present
+    chat_history = PersistenceService.get_chat_history(analysis_id, user_id=user_id) or []
+    
     if saved_report:
+        saved_report["chatHistory"] = chat_history
         return saved_report
 
     # If no report persisted yet, generate dynamically
     return build_report_data(analysis_id, current_user)
+

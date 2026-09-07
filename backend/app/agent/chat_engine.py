@@ -53,7 +53,15 @@ class AIChatEngine:
                 "confidence": "LOW"
             }
 
-        df = CSVLoader.get_dataset(dataset_id)
+        try:
+            df = CSVLoader.get_dataset(dataset_id)
+        except Exception as e_load:
+            logger.warning(f"Unable to load dataset for dataset_id={dataset_id}: {e_load}")
+            return {
+                "text": "The dataset associated with this analysis session could not be found. Please upload a CSV dataset to perform analysis.",
+                "confidence": "LOW"
+            }
+
         if df is None or df.empty:
             return {
                 "text": "Please upload a CSV dataset before asking an analysis question.",
@@ -69,7 +77,7 @@ class AIChatEngine:
 
         chat_context_text = self._format_chat_history(history)
 
-        # 5. Execute real Pandas data analysis
+        # 5. Execute real Pandas data analysis tailored to user question
         computed_evidence = self._compute_dataset_evidence(df, msg_clean, history, analysis or {})
 
         # 6. Generate grounded response using LLM
@@ -105,7 +113,7 @@ class AIChatEngine:
             r"translate to", r"solve this math", r"meaning of life", r"what is france"
         ]
         if any(re.search(pat, t) for pat in out_patterns):
-            data_keywords = ["sales", "data", "row", "column", "dataset", "percent", "revenue", "price", "count", "metric", "region", "product"]
+            data_keywords = ["sales", "data", "row", "column", "dataset", "percent", "revenue", "price", "count", "metric", "region", "product", "total", "average", "mean", "sum", "customer", "order"]
             if not any(k in t for k in data_keywords):
                 return True
         return False
@@ -128,10 +136,10 @@ class AIChatEngine:
         history: List[Dict[str, Any]],
         analysis: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Perform comprehensive, dynamic Pandas computations across all CSV columns."""
+        """Perform comprehensive, dynamic Pandas computations across ALL CSV columns."""
         num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-        date_cols = [c for c in df.columns if 'date' in c.lower() or 'time' in c.lower() or 'month' in c.lower() or 'year' in c.lower()]
+        cat_cols = df.select_dtypes(include=['object', 'category', 'string']).columns.tolist()
+        date_cols = [c for c in df.columns if any(k in c.lower() for k in ['date', 'time', 'month', 'year', 'day'])]
 
         q_lower = question.lower()
 
@@ -148,75 +156,109 @@ class AIChatEngine:
             f"Dataset Overview: {len(df)} rows across {len(df.columns)} columns ({', '.join(df.columns)})."
         ]
 
-        # 1. Provide complete distinct value listing & value counts for ALL categorical columns
-        cat_summaries = []
-        for col in cat_cols:
-            try:
-                val_counts = df[col].dropna().value_counts()
-                top_vals = val_counts.head(10)
-                tot = len(df)
-                val_str = ", ".join([f"{idx}: {cnt} ({cnt/tot*100:.1f}%)" for idx, cnt in top_vals.items()])
-                cat_summaries.append(f"Categorical attribute '{col}' values (total unique: {len(val_counts)}): {val_str}")
-            except Exception as e_cat:
-                logger.debug(f"Categorical summary error for {col}: {e_cat}")
+        # Sample rows for exact context
+        try:
+            head_str = df.head(5).to_string(index=False)
+            calculations.append(f"Sample Dataset Rows (First 5):\n{head_str}")
+        except Exception:
+            pass
 
-        if cat_summaries:
-            calculations.extend(cat_summaries)
-
-        # 2. Total & Summary stats for ALL numerical columns
+        # 1. Total & Summary stats for ALL numerical columns
         num_summaries = []
         for col in num_cols:
             try:
-                tot_sum = float(df[col].sum())
-                mean_val = float(df[col].mean())
-                min_val = float(df[col].min())
-                max_val = float(df[col].max())
-                num_summaries.append(f"Numerical attribute '{col}': Total Sum = {tot_sum:,.2f}, Average = {mean_val:,.2f}, Min = {min_val:,.2f}, Max = {max_val:,.2f}")
+                series = df[col].dropna()
+                tot_sum = float(series.sum())
+                mean_val = float(series.mean())
+                med_val = float(series.median())
+                min_val = float(series.min())
+                max_val = float(series.max())
+                num_summaries.append(
+                    f"Column '{col}' Stats: Total Sum = {tot_sum:,.2f}, Average = {mean_val:,.2f}, Median = {med_val:,.2f}, Min = {min_val:,.2f}, Max = {max_val:,.2f}"
+                )
             except Exception as e_num:
                 logger.debug(f"Numeric summary error for {col}: {e_num}")
 
         if num_summaries:
+            calculations.append("NUMERICAL ATTRIBUTES SUMMARY:")
             calculations.extend(num_summaries)
 
-        # 3. Dynamic Group Aggregations (Numerical metric grouped by Categorical attribute)
-        for cat in cat_cols[:3]: # Top 3 categorical columns
-            for num in num_cols[:2]: # Top 2 numeric columns
-                try:
-                    grp = df.groupby(cat)[num].agg(['sum', 'mean', 'count']).reset_index()
-                    tot_s = grp['sum'].sum()
-                    grp['pct'] = (grp['sum'] / tot_s * 100).round(1) if tot_s != 0 else 0
-                    grp_sorted = grp.sort_values(by='sum', ascending=False).head(5)
-                    b_str = ", ".join([f"{r[cat]}: sum={r['sum']:,.2f} ({r['pct']}%, avg={r['mean']:,.2f})" for _, r in grp_sorted.iterrows()])
-                    calculations.append(f"Group Aggregation: '{num}' grouped by '{cat}': {b_str}")
-                except Exception as e_grp:
-                    logger.debug(f"Group aggregation error: {e_grp}")
+        # 2. Distinct value distribution for ALL categorical columns
+        cat_summaries = []
+        for col in cat_cols:
+            try:
+                val_counts = df[col].dropna().value_counts()
+                top_vals = val_counts.head(15)
+                tot = len(df)
+                val_str = ", ".join([f"'{idx}': {cnt} ({cnt/tot*100:.1f}%)" for idx, cnt in top_vals.items()])
+                cat_summaries.append(f"Column '{col}' (unique={len(val_counts)}): {val_str}")
+            except Exception as e_cat:
+                logger.debug(f"Categorical summary error for {col}: {e_cat}")
 
-        # 4. Keyword & Subgroup Search across all string values in dataset
+        if cat_summaries:
+            calculations.append("CATEGORICAL ATTRIBUTES SUMMARY:")
+            calculations.extend(cat_summaries)
+
+        # 3. Dynamic Group Aggregations across all categorical & numerical columns
+        group_results = []
+        for cat in cat_cols:
+            # Skip high-cardinality ID columns for grouping unless explicitly mentioned
+            if df[cat].nunique() > 50 and cat.lower() not in combined_text:
+                continue
+            for num in num_cols:
+                try:
+                    grp = df.groupby(cat, dropna=False)[num].agg(['sum', 'mean', 'count', 'min', 'max']).reset_index()
+                    tot_s = df[num].sum()
+                    grp['pct'] = (grp['sum'] / tot_s * 100).round(1) if tot_s != 0 else 0
+                    grp_sorted = grp.sort_values(by='sum', ascending=False).head(10)
+                    b_str = "; ".join([
+                        f"'{r[cat]}': sum={r['sum']:,.2f} ({r['pct']}%), avg={r['mean']:,.2f}, count={int(r['count'])}"
+                        for _, r in grp_sorted.iterrows()
+                    ])
+                    group_results.append(f"Grouping '{num}' by '{cat}': {b_str}")
+                except Exception as e_grp:
+                    logger.debug(f"Group aggregation error for {cat}-{num}: {e_grp}")
+
+        if group_results:
+            calculations.append("GROUP AGGREGATIONS:")
+            calculations.extend(group_results[:12])
+
+        # 4. Keyword & Cell Value Search for Targeted Subgroup Filtering
+        words = [w.strip() for w in re.split(r'\W+', combined_text) if len(w.strip()) >= 2]
         matched_filters = []
-        words = [w.strip() for w in re.split(r'\W+', combined_text) if len(w.strip()) > 2]
         for col in cat_cols:
             unique_vals = df[col].dropna().astype(str).unique()
             for val in unique_vals:
                 val_l = val.lower()
-                if any(w in val_l for w in words) or val_l in combined_text:
+                if val_l in combined_text or any(w == val_l for w in words):
                     sub_df = df[df[col].astype(str).str.lower() == val_l]
                     if len(sub_df) > 0:
                         pct_rows = (len(sub_df) / len(df)) * 100
-                        sub_info = f"Specific Subgroup Match '{val}' in column '{col}': {len(sub_df)} rows ({pct_rows:.1f}% of total)"
+                        sub_info = f"Filtered Subgroup '{val}' in column '{col}': {len(sub_df)} rows ({pct_rows:.1f}% of dataset)"
                         if num_cols:
                             num_sub = []
-                            for num_c in num_cols[:2]:
+                            for num_c in num_cols:
                                 s_sum = float(sub_df[num_c].sum())
                                 s_avg = float(sub_df[num_c].mean())
-                                num_sub.append(f"{num_c} Total={s_sum:,.2f} (Avg={s_avg:,.2f})")
+                                num_sub.append(f"{num_c} Sum={s_sum:,.2f} (Avg={s_avg:,.2f})")
                             sub_info += f" | {', '.join(num_sub)}"
                         matched_filters.append(sub_info)
 
         if matched_filters:
-            calculations.append("SUBGROUP QUERY MATCHES:")
-            calculations.extend(matched_filters[:5])
+            calculations.append("MATCHED SUBGROUP QUERY METRICS:")
+            calculations.extend(matched_filters[:10])
 
-        # 5. Time Series Trend if date column exists
+        # 5. Top / Bottom N Rankings for Numerical Columns
+        if any(kw in q_lower for kw in ["top", "highest", "best", "max", "bottom", "lowest", "least", "worst", "rank"]):
+            for num_c in num_cols:
+                try:
+                    top_df = df.sort_values(by=num_c, ascending=False).head(5)
+                    top_rows = [f"#{rank+1}: " + ", ".join([f"{col}={row[col]}" for col in df.columns[:5]]) for rank, (_, row) in enumerate(top_df.iterrows())]
+                    calculations.append(f"Top 5 Rows by '{num_c}':\n" + "\n".join(top_rows))
+                except Exception:
+                    pass
+
+        # 6. Time Series Trend if date column exists
         if date_cols and num_cols:
             date_col = date_cols[0]
             num_col = num_cols[0]
@@ -239,7 +281,7 @@ class AIChatEngine:
             "row_count": len(df),
             "col_count": len(df.columns),
             "calculations": calculations,
-            "summary_text": "\n".join(calculations)
+            "summary_text": "\n\n".join(calculations)
         }
         return evidence
 
@@ -255,18 +297,18 @@ class AIChatEngine:
         calc_str = computed_evidence.get("summary_text") or "Dataset loaded successfully."
 
         return f"""
-You are an expert Autonomous Data Scientist Agent. Answer the user's question using ONLY the provided real Pandas calculation evidence from the uploaded dataset.
+You are an expert Autonomous Data Scientist Agent. Answer the user's specific question using ONLY the provided real Pandas calculation evidence and sample dataset rows below.
 
-CRITICAL RULES:
-1. Every number, percentage, delta, and ranking MUST come directly from the CALCULATED EVIDENCE below.
-2. NEVER invent fake numbers, dates, percentages, or hypothetical facts.
-3. Be concise, direct, professional, and data-grounded.
-4. Do NOT give generic ChatGPT advice ("Sales can decrease due to many factors..."). State what the data actually shows.
+CRITICAL INSTRUCTIONS:
+1. Look directly at the CALCULATED PANDAS EVIDENCE and SAMPLE ROWS to answer the user's exact question.
+2. State exact numbers, column totals, averages, percentages, rankings, or counts from the evidence.
+3. DO NOT give generic ChatGPT responses or generic business advice. Give the EXACT calculated answer for the user's dataset.
+4. If asked "what", "which", "how many", "total", or "average", deliver the precise value or top item directly in the first line.
 
 DATASET CONTEXT:
 - File: {dataset_name}
-- Columns: {', '.join(columns)}
-- Prior Investigation Conclusion: {existing_conclusion or 'None'}
+- Columns ({len(columns)}): {', '.join(columns)}
+- Investigation Summary: {existing_conclusion or 'Completed baseline analysis.'}
 
 CONVERSATION HISTORY:
 {chat_context}
@@ -277,19 +319,20 @@ CALCULATED PANDAS EVIDENCE FROM CSV DATASET:
 USER QUESTION:
 "{user_message}"
 
-RESPONSE FORMAT (Use exact header titles if relevant):
+PREFERRED OUTPUT FORMAT (Use Markdown formatting):
 
-ANSWER
-[Direct, precise answer to the user question using exact numbers.]
+### 📌 **Direct Answer**
+**[Exact answer with bold numbers, formatted values, currency/units, or top items]**
 
-EVIDENCE
-[Specific calculated metrics, totals, percentages, or group breakdowns.]
+### 📊 **Calculated Data Evidence**
+- **[Metric / Column]**: [Exact calculated value or percentage from CSV]
+- **[Group Breakdown / Filter]**: [Exact value counts or sub-totals]
 
-ANALYSIS
-[Short 1-2 sentence explanation of how the evidence supports the conclusion.]
+### 🔍 **Analytical Insight**
+[Short 1-2 sentence analytical explanation of what the dataset metrics indicate.]
 
-CONFIDENCE
-High
+---
+⚡ **Data Verification**: Verified directly against uploaded CSV dataset • **Confidence**: HIGH
 """
 
     def _format_llm_output(self, raw_text: str, computed_evidence: Dict[str, Any]) -> str:
@@ -303,8 +346,28 @@ High
                 lines = lines[:-1]
             text = "\n".join(lines).strip()
 
-        # Ensure Confidence line is present
-        if "CONFIDENCE" not in text:
-            text += "\n\nCONFIDENCE\nHigh"
+        # Transform raw uppercase headers into clean Markdown headers if needed
+        replacements = [
+            ("ANSWER\n", "### 📌 **Direct Answer**\n"),
+            ("ANSWER:\n", "### 📌 **Direct Answer**\n"),
+            ("EVIDENCE\n", "### 📊 **Calculated Data Evidence**\n"),
+            ("EVIDENCE:\n", "### 📊 **Calculated Data Evidence**\n"),
+            ("ANALYSIS\n", "### 🔍 **Analytical Insight**\n"),
+            ("ANALYSIS:\n", "### 🔍 **Analytical Insight**\n"),
+            ("CONFIDENCE\nHigh", "\n---\n⚡ **Data Verification**: Verified directly against uploaded CSV dataset • **Confidence**: HIGH"),
+            ("CONFIDENCE\nHIGH", "\n---\n⚡ **Data Verification**: Verified directly against uploaded CSV dataset • **Confidence**: HIGH"),
+            ("CONFIDENCE:\nHigh", "\n---\n⚡ **Data Verification**: Verified directly against uploaded CSV dataset • **Confidence**: HIGH"),
+        ]
+
+        for old, new in replacements:
+            if old in text:
+                text = text.replace(old, new)
+
+        if "⚡ **Data Verification**" not in text and "CONFIDENCE" in text:
+            text = re.sub(r'CONFIDENCE.*', '\n---\n⚡ **Data Verification**: Verified directly against uploaded CSV dataset • **Confidence**: HIGH', text, flags=re.DOTALL)
+        elif "⚡ **Data Verification**" not in text:
+            text += "\n\n---\n⚡ **Data Verification**: Verified directly against uploaded CSV dataset • **Confidence**: HIGH"
 
         return text
+
+

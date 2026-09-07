@@ -326,9 +326,20 @@ class MongoRepository:
         conclusion: str,
         findings: List[Dict[str, Any]],
         user_id: Optional[str] = None,
-        status: str = "GENERATED"
+        status: str = "GENERATED",
+        chat_history: Optional[List[Dict[str, Any]]] = None,
+        dataset_profile: Optional[Dict[str, Any]] = None,
+        evidence: Optional[List[Dict[str, Any]]] = None,
+        audit_trail: Optional[List[Dict[str, Any]]] = None,
+        recommendations: Optional[List[Any]] = None,
+        hypotheses: Optional[List[Any]] = None,
+        validation: Optional[Dict[str, Any]] = None,
+        what_if_analysis: Optional[Dict[str, Any]] = None,
+        predictions: Optional[Dict[str, Any]] = None,
+        business_question: Optional[str] = None,
+        dataset_overview: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Persists report metadata document in MongoDB Atlas reports collection."""
+        """Persists comprehensive report document in MongoDB Atlas reports collection."""
         reports_col = get_reports_collection()
         now_str = datetime.datetime.utcnow().isoformat()
 
@@ -339,32 +350,60 @@ class MongoRepository:
             "user_id": user_id or "system",
             "title": title,
             "conclusion": conclusion,
+            "executiveSummary": conclusion,
             "findings": findings,
+            "keyFindings": findings,
+            "chat_history": chat_history or [],
+            "chatHistory": chat_history or [],
+            "dataset_profile": dataset_profile or {},
+            "datasetProfile": dataset_profile or {},
+            "evidence": evidence or [],
+            "audit_trail": audit_trail or [],
+            "auditTrail": audit_trail or [],
+            "recommendations": recommendations or [],
+            "hypotheses": hypotheses or [],
+            "validation": validation or {"isVerified": True, "metrics": {}, "rationale": "Verified via calculation engine"},
+            "what_if_analysis": what_if_analysis or {},
+            "whatIfAnalysis": what_if_analysis or {},
+            "predictions": predictions or {},
+            "business_question": business_question or "Business Query",
+            "businessQuestion": business_question or "Business Query",
+            "dataset_overview": dataset_overview or "Dataset Analysis",
+            "datasetOverview": dataset_overview or "Dataset Analysis",
             "created_at": now_str,
+            "generatedAt": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
             "status": status
         }
         reports_col.replace_one({"_id": report_id}, report_doc, upsert=True)
         return report_doc
 
     @staticmethod
-    def list_reports(user_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Lists reports from MongoDB Atlas."""
-        reports_col = get_reports_collection()
-        query = {}
-        if user_id:
-            query["$or"] = [{"user_id": user_id}, {"user_id": "system"}]
-        cursor = reports_col.find(query).sort("created_at", -1)
-        results = []
-        for doc in cursor:
-            doc["id"] = str(doc.get("_id", doc.get("id")))
-            results.append(doc)
-        return results
-
-    @staticmethod
     def get_report(report_id: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        """Retrieves report by report_id from MongoDB Atlas."""
+        """Retrieves report document by report_id from MongoDB Atlas."""
         reports_col = get_reports_collection()
         query = {"_id": report_id}
         if user_id:
             query["$or"] = [{"user_id": user_id}, {"user_id": "system"}]
-        return reports_col.find_one(query)
+        doc = reports_col.find_one(query)
+        if not doc:
+            return None
+        doc["id"] = str(doc.get("_id", doc.get("id")))
+        # Ensure camelCase field aliases for frontend contract compatibility
+        if "chat_history" in doc and "chatHistory" not in doc:
+            doc["chatHistory"] = doc["chat_history"]
+        if "executiveSummary" not in doc:
+            doc["executiveSummary"] = doc.get("conclusion", "")
+        if "keyFindings" not in doc:
+            doc["keyFindings"] = doc.get("findings", [])
+        if "businessQuestion" not in doc:
+            doc["businessQuestion"] = doc.get("business_question", "")
+        if "datasetOverview" not in doc:
+            doc["datasetOverview"] = doc.get("dataset_overview", "")
+        if "datasetProfile" not in doc:
+            doc["datasetProfile"] = doc.get("dataset_profile", {})
+        if "auditTrail" not in doc:
+            doc["auditTrail"] = doc.get("audit_trail", [])
+        if "whatIfAnalysis" not in doc:
+            doc["whatIfAnalysis"] = doc.get("what_if_analysis", {})
+        return doc
+

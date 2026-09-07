@@ -38,3 +38,7 @@ logs/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Data & Uploads
+backend/data/
+
